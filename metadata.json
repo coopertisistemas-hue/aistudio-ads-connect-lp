@@ -1,0 +1,8 @@
+{
+  "name": "ADS Connect - Crescimento Digital B2B",
+  "description": "Plataforma premium de presença digital e crescimento de faturamento para empresas que buscam resultados reais e visibilidade estratégica.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
