@@ -1,111 +1,121 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../../auth/mockAuth';
+import { ROUTES } from '../../config/constants';
 import '../../styles/admin.css';
 
 const AdminLayout: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        navigate(ROUTES.LOGIN);
     };
 
-    const navItems = [
-        {
-            path: '/admin', label: 'Visão Geral', icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            )
-        },
-        {
-            path: '/admin/leads', label: 'Leads', icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            )
-        },
-        {
-            path: '/admin/anuncios', label: 'Anúncios', icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            )
-        },
-        {
-            path: '/admin/sites', label: 'Sites da Rede', icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            )
-        },
-        {
-            path: '/admin/configuracoes', label: 'Configurações', icon: (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            )
-        },
+    const menuItems = [
+        { label: 'Visão Geral', path: ROUTES.ADMIN, end: true },
+        { label: 'Leads', path: ROUTES.ADMIN_LEADS },
+        { label: 'Sites & Presença', path: ROUTES.ADMIN_SITES },
+        { label: 'Anúncios', path: ROUTES.ADMIN_ADS },
+        { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS },
+        { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS },
     ];
 
+    const getPageTitle = () => {
+        const current = menuItems.find(item =>
+            item.end ? location.pathname === item.path : location.pathname.startsWith(item.path)
+        );
+        return current?.label || 'Painel';
+    };
+
     return (
-        <div className="admin-layout">
-            <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
-                <div className="p-6 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="white" />
-                        </svg>
+        <div className="min-h-screen bg-[#F8F9FA] flex">
+            {/* Mobile Toggle Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-brandDark/40 backdrop-blur-sm z-40 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={`
+        fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-brandDark text-white p-6 flex flex-col
+        transition-transform duration-300 lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+                <div className="flex items-center gap-3 mb-12">
+                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                        <span className="text-brandDark font-black text-2xl">A</span>
                     </div>
-                    <span className="font-extrabold text-xl tracking-tight">ADS Connect</span>
+                    <span className="text-xl font-black tracking-tight uppercase">ADS <span className="text-primary">Connect</span></span>
                 </div>
 
-                <nav className="flex-1 mt-4">
-                    {navItems.map((item) => (
+                <nav className="flex-1 space-y-2">
+                    {menuItems.map(item => (
                         <NavLink
                             key={item.path}
                             to={item.path}
-                            end={item.path === '/admin'}
-                            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                            end={item.end}
                             onClick={() => setIsSidebarOpen(false)}
+                            className={({ isActive }) => `
+                flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all
+                ${isActive
+                                    ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
+                                    : 'text-white/50 hover:text-white hover:bg-white/5'}
+              `}
                         >
-                            {item.icon}
-                            <span>{item.label}</span>
+                            {item.label}
                         </NavLink>
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-white/10">
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 w-full p-3 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors font-semibold"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                        Sair do Painel
-                    </button>
-                </div>
+                <button
+                    onClick={handleLogout}
+                    className="mt-auto flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-red-400 hover:bg-red-400/10 transition-all border border-red-400/20"
+                >
+                    <span>Sair da conta</span>
+                </button>
             </aside>
 
-            <main className="admin-main">
-                <header className="admin-topbar">
-                    <button
-                        className="lg:hidden p-2 text-brandDark"
-                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                    </button>
-
-                    <div className="hidden lg:block text-gray-400 font-medium">
-                        Bem-vindo ao centro de controle ADS Connect
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Topbar */}
+                <header className="h-20 bg-white border-b border-brandDark/5 px-6 lg:px-10 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden p-2 text-brandDark"
+                            aria-label="Abrir menu"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                        </button>
+                        <h1 className="text-xl font-black text-brandDark">{getPageTitle()}</h1>
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                            Mock Mode
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="text-right hidden sm:block">
-                            <div className="text-sm font-bold text-brandDark">Admin Mock</div>
-                            <div className="text-xs text-gray-500">Administrador Master</div>
+                        <div className="flex flex-col items-end hidden sm:flex">
+                            <span className="text-sm font-black text-brandDark leading-none">Administrador</span>
+                            <span className="text-[10px] font-bold text-brandDark/40 uppercase tracking-widest">Plano Escala</span>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-gray-100 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
-                            <img src="https://ui-avatars.com/api/?name=Admin+Mock&background=1fdb64&color=fff" alt="Avatar" />
+                        <div className="w-10 h-10 rounded-full bg-brandDark text-primary flex items-center justify-center font-black">
+                            A
                         </div>
                     </div>
                 </header>
 
-                <div className="p-6 lg:p-8">
-                    <Outlet />
-                </div>
-            </main>
+                <main className="p-6 lg:p-10">
+                    <div className="max-w-7xl mx-auto">
+                        <Outlet />
+                    </div>
+                </main>
+            </div>
         </div>
     );
 };
