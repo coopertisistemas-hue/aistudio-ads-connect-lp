@@ -206,7 +206,7 @@ const AdminSitesPage: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-brandDark">Sites & Presença</h1>
+                    <h1 className="text-3xl font-black text-brandDark">Sites</h1>
                     <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Gerencie seus sites e presenças digitais de alto impacto.</p>
                 </div>
                 <button

@@ -39,6 +39,11 @@ const App: React.FC = () => {
           <Route path="anuncios" element={<AdminAdsPage />} />
           <Route path="relatorios" element={<AdminReportsPage />} />
           <Route path="configuracoes" element={<AdminConfigPage />} />
+
+          {/* Legacy & Fallback Redirects */}
+          <Route path="ads" element={<Navigate to={ROUTES.ADMIN_ADS} replace />} />
+          <Route path="reports" element={<Navigate to={ROUTES.ADMIN_REPORTS} replace />} />
+          <Route path="config" element={<Navigate to={ROUTES.ADMIN_SETTINGS} replace />} />
         </Route>
         <Route path="*" element={<Navigate to={ROUTES.LP} replace />} />
       </Routes>

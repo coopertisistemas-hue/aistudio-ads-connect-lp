@@ -19,7 +19,7 @@ const AdminLayout: React.FC = () => {
         { label: 'Sites', path: ROUTES.ADMIN_SITES, end: false },
         { label: 'Anúncios', path: ROUTES.ADMIN_ADS, end: false },
         { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS, end: false },
-        { label: 'Ajustes', path: ROUTES.ADMIN_SETTINGS, end: false },
+        { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS, end: false },
     ];
 
     const getPageTitle = () => {

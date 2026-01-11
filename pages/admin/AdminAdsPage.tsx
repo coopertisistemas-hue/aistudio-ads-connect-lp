@@ -216,7 +216,7 @@ const AdminAdsPage: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-brandDark">Ads & Campanhas</h1>
+                    <h1 className="text-3xl font-black text-brandDark">Anúncios</h1>
                     <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Gerencie seus anúncios e orçamentos entre plataformas.</p>
                 </div>
                 <button

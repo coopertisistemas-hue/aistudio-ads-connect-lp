@@ -329,7 +329,7 @@ const Header: React.FC<{
     return (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
-                <h1 className="text-3xl font-black text-brandDark">Relatórios & Insights</h1>
+                <h1 className="text-3xl font-black text-brandDark">Relatórios</h1>
                 <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Análise granular de performance e conversão.</p>
             </div>
 
