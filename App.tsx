@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminLeadsPage from './pages/admin/AdminLeadsPage';
 import AdminSitesPage from './pages/admin/AdminSitesPage';
+import AdminAdsPage from './pages/admin/AdminAdsPage';
 import AdminPlaceholderPage from './pages/admin/AdminPlaceholderPage';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
@@ -33,7 +34,7 @@ const App: React.FC = () => {
           <Route index element={<Navigate to={ROUTES.ADMIN_LEADS} replace />} />
           <Route path="leads" element={<AdminLeadsPage />} />
           <Route path="sites" element={<AdminSitesPage />} />
-          <Route path="anuncios" element={<AdminPlaceholderPage />} />
+          <Route path="anuncios" element={<AdminAdsPage />} />
           <Route path="relatorios" element={<AdminPlaceholderPage />} />
           <Route path="configuracoes" element={<AdminPlaceholderPage />} />
         </Route>
