@@ -17,9 +17,9 @@ const AdminLayout: React.FC = () => {
     const menuItems = [
         { label: 'Leads', path: ROUTES.ADMIN_LEADS, end: false },
         { label: 'Sites', path: ROUTES.ADMIN_SITES, end: false },
-        { label: 'Ads', path: ROUTES.ADMIN_ADS, end: false },
-        { label: 'Reports', path: ROUTES.ADMIN_REPORTS, end: false },
-        { label: 'Config', path: ROUTES.ADMIN_SETTINGS, end: false },
+        { label: 'Anúncios', path: ROUTES.ADMIN_ADS, end: false },
+        { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS, end: false },
+        { label: 'Ajustes', path: ROUTES.ADMIN_SETTINGS, end: false },
     ];
 
     const getPageTitle = () => {

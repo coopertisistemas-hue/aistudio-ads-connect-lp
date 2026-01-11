@@ -114,7 +114,11 @@ const AdminReportsPage: React.FC = () => {
             `}</style>
 
             <div className="no-print">
-                <Header filters={filters} setFilters={setFilters} />
+                <Header
+                    filters={filters}
+                    setFilters={setFilters}
+                    onClear={() => setFilters({ dateRange: '30', leadStatus: 'ALL', adChannel: 'ALL' })}
+                />
 
                 {/* Export Actions */}
                 <div className="flex flex-wrap gap-3 mt-8">
@@ -139,6 +143,27 @@ const AdminReportsPage: React.FC = () => {
                     <p className="text-sm font-bold text-brandDark/60 mt-2 italic">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
                 </div>
 
+                {/* Insights Panel */}
+                {stats.insights.length > 0 && (
+                    <div className="admin-card bg-brandDark border-brandDark/10 p-8 no-print">
+                        <h3 className="text-white text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                            Insights do Período
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {stats.insights.map((insight, idx) => (
+                                <div key={idx} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-start gap-3">
+                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${insight.type === 'positive' ? 'bg-green-400' :
+                                        insight.type === 'warning' ? 'bg-amber-400' :
+                                            insight.type === 'neutral' ? 'bg-blue-400' : 'bg-white/40'
+                                        }`} />
+                                    <p className="text-xs font-bold text-white/70 leading-relaxed">{insight.message}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Main KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <KPICard label="Total de Leads" value={stats.leads.total} subLabel="Base histórica" icon="leads" />
@@ -156,14 +181,16 @@ const AdminReportsPage: React.FC = () => {
                             Status dos Leads
                         </h3>
                         <div className="space-y-4">
-                            {Object.entries(stats.leads.byStatus).map(([status, count]) => (
+                            {Object.entries(stats.leads.byStatus).length > 0 ? Object.entries(stats.leads.byStatus).map(([status, count]) => (
                                 <div key={status} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
                                     <span className={`text-xs font-black uppercase tracking-widest text-brandDark/60`}>
                                         {status.replace('_', ' ')}
                                     </span>
                                     <span className="text-lg font-black text-brandDark">{count}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-xs font-bold text-brandDark/20 py-4 text-center italic">Sem dados de status no período.</p>
+                            )}
                         </div>
                     </div>
 
@@ -174,7 +201,7 @@ const AdminReportsPage: React.FC = () => {
                             Canais de Anúncios
                         </h3>
                         <div className="space-y-4">
-                            {Object.entries(stats.ads.byChannel).map(([channel, count]) => (
+                            {Object.entries(stats.ads.byChannel).length > 0 ? Object.entries(stats.ads.byChannel).map(([channel, count]) => (
                                 <div key={channel} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-brandDark text-white flex items-center justify-center font-black text-[10px] uppercase">
@@ -186,7 +213,9 @@ const AdminReportsPage: React.FC = () => {
                                     </div>
                                     <span className="text-lg font-black text-brandDark">{count}</span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-xs font-bold text-brandDark/20 py-4 text-center italic">Sem dados de canais no período.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -200,30 +229,34 @@ const AdminReportsPage: React.FC = () => {
                             <span className="bg-primary/20 text-brandDark text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.leads.recent.length} listados</span>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Status</th>
-                                        <th>Data de Criação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.leads.recent.map(lead => (
-                                        <tr key={lead.id}>
-                                            <td className="font-black text-brandDark">{lead.name}</td>
-                                            <td>
-                                                <span className={`status-badge status-${lead.status}`}>
-                                                    {lead.status.replace('_', ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="text-xs font-bold text-brandDark/40">
-                                                {new Date(lead.createdAt).toLocaleString('pt-BR')}
-                                            </td>
+                            {stats.leads.recent.length > 0 ? (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Status</th>
+                                            <th>Data de Criação</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {stats.leads.recent.map(lead => (
+                                            <tr key={lead.id}>
+                                                <td className="font-black text-brandDark">{lead.name}</td>
+                                                <td>
+                                                    <span className={`status-badge status-${lead.status}`}>
+                                                        {lead.status.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="text-xs font-bold text-brandDark/40">
+                                                    {new Date(lead.createdAt).toLocaleString('pt-BR')}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="p-12 text-center text-brandDark/20 font-bold italic">Nenhum lead encontrado com estes filtros.</div>
+                            )}
                         </div>
                     </div>
 
@@ -234,32 +267,36 @@ const AdminReportsPage: React.FC = () => {
                             <span className="bg-brandDark text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.ads.recent.length} listadas</span>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>Campanha</th>
-                                        <th>Canal</th>
-                                        <th>Investimento</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.ads.recent.map(ad => (
-                                        <tr key={ad.id}>
-                                            <td className="font-black text-brandDark">{ad.name}</td>
-                                            <td className="text-xs font-black uppercase tracking-widest text-brandDark/60">{ad.channel}</td>
-                                            <td className="text-sm font-bold text-brandDark/70">
-                                                {ad.dailyBudget ? `R$ ${ad.dailyBudget}/dia` : ad.totalBudget ? `R$ ${ad.totalBudget} total` : '—'}
-                                            </td>
-                                            <td>
-                                                <span className={`status-badge status-${ad.status}`}>
-                                                    {ad.status === 'active' ? 'Ativo' : ad.status}
-                                                </span>
-                                            </td>
+                            {stats.ads.recent.length > 0 ? (
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Campanha</th>
+                                            <th>Canal</th>
+                                            <th>Investimento</th>
+                                            <th>Status</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {stats.ads.recent.map(ad => (
+                                            <tr key={ad.id}>
+                                                <td className="font-black text-brandDark">{ad.name}</td>
+                                                <td className="text-xs font-black uppercase tracking-widest text-brandDark/60">{ad.channel}</td>
+                                                <td className="text-sm font-bold text-brandDark/70">
+                                                    {ad.dailyBudget ? `R$ ${ad.dailyBudget}/dia` : ad.totalBudget ? `R$ ${ad.totalBudget} total` : '—'}
+                                                </td>
+                                                <td>
+                                                    <span className={`status-badge status-${ad.status}`}>
+                                                        {ad.status === 'active' ? 'Ativo' : ad.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="p-12 text-center text-brandDark/20 font-bold italic">Nenhuma campanha encontrada com estes filtros.</div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -284,7 +321,11 @@ const ActionButton: React.FC<{ onClick: () => void, label: string, icon: string 
     );
 };
 
-const Header: React.FC<{ filters: ReportFilters, setFilters: React.Dispatch<React.SetStateAction<ReportFilters>> }> = ({ filters, setFilters }) => {
+const Header: React.FC<{
+    filters: ReportFilters,
+    setFilters: React.Dispatch<React.SetStateAction<ReportFilters>>,
+    onClear: () => void
+}> = ({ filters, setFilters, onClear }) => {
     return (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
@@ -337,6 +378,14 @@ const Header: React.FC<{ filters: ReportFilters, setFilters: React.Dispatch<Reac
                         <option value="lost">Perdido</option>
                     </select>
                 </div>
+
+                <button
+                    onClick={onClear}
+                    className="h-[38px] px-4 self-end text-brandDark/30 hover:text-primary transition-colors flex items-center justify-center p-2"
+                    title="Limpar Filtros"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
             </div>
         </div>
     );

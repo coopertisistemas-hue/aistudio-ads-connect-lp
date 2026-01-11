@@ -25,6 +25,10 @@ export interface ReportStats {
         total: number;
         byStatus: Record<string, number>;
     };
+    insights: {
+        message: string;
+        type: 'positive' | 'neutral' | 'info' | 'warning';
+    }[];
 }
 
 export interface ReportFilters {
@@ -112,10 +116,62 @@ export const reportsService = {
             }, {} as Record<string, number>)
         };
 
+        // Compute Insights
+        const insights: ReportStats['insights'] = [];
+
+        // Insight 1: Lead Trend
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(now.getDate() - 14);
+        const leadsPrevPeriod = leads.filter(l => {
+            const date = new Date(l.createdAt);
+            return date >= fourteenDaysAgo && date < sevenDaysAgo;
+        }).length;
+
+        const leadsCurrentPeriod = leadsStats.last7Days;
+        if (leadsCurrentPeriod > leadsPrevPeriod) {
+            const percent = leadsPrevPeriod > 0 ? Math.round(((leadsCurrentPeriod - leadsPrevPeriod) / leadsPrevPeriod) * 100) : 100;
+            insights.push({
+                message: `Crescimento de ${percent}% na geração de leads nos últimos 7 dias.`,
+                type: 'positive'
+            });
+        } else if (leadsCurrentPeriod < leadsPrevPeriod && leadsPrevPeriod > 0) {
+            insights.push({
+                message: 'A geração de leads diminuiu em relação à semana anterior.',
+                type: 'info'
+            });
+        }
+
+        // Insight 2: Top Channel
+        const topChannel = Object.entries(adsStats.byChannel).sort((a, b) => b[1] - a[1])[0];
+        if (topChannel) {
+            insights.push({
+                message: `${topChannel[0].toUpperCase()} é seu canal mais ativo com ${topChannel[1]} campanhas.`,
+                type: 'neutral'
+            });
+        }
+
+        // Insight 3: Site Health
+        const offlineSites = sitesStats.byStatus['offline'] || 0;
+        if (offlineSites > 0) {
+            insights.push({
+                message: `Atenção: Você possui ${offlineSites} site(s) offline no momento.`,
+                type: 'warning'
+            });
+        }
+
+        // Insight 4: Active Ads efficiency
+        if (adsStats.total > 0 && adsStats.activeNow === 0) {
+            insights.push({
+                message: 'Você tem campanhas cadastradas, mas nenhuma está ativa agora.',
+                type: 'info'
+            });
+        }
+
         return {
             leads: leadsStats,
             ads: adsStats,
-            sites: sitesStats
+            sites: sitesStats,
+            insights
         };
     },
 
