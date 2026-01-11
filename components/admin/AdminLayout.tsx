@@ -53,13 +53,22 @@ const AdminLayout: React.FC = () => {
                 { label: 'Auditoria', path: ROUTES.ADMIN_AUDIT },
                 { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS },
                 { label: 'Ajuda & Suporte', path: ROUTES.ADMIN_HELP },
+                {
+                    label: 'Sair da conta',
+                    path: '#logout',
+                    onClick: () => {
+                        if (window.confirm('Deseja realmente sair da conta?')) {
+                            handleLogout();
+                        }
+                    }
+                },
             ]
         }
     ];
 
     const getPageTitle = () => {
         for (const group of menuGroups) {
-            const current = group.items.find(item => location.pathname.startsWith(item.path));
+            const current = group.items.find(item => item.path !== '#logout' && location.pathname.startsWith(item.path));
             if (current) return current.label;
         }
         return 'Painel';
@@ -95,21 +104,42 @@ const AdminLayout: React.FC = () => {
                                 {group.title}
                             </h3>
                             <div className="space-y-1">
-                                {group.items.map(item => (
-                                    <NavLink
-                                        key={item.path}
-                                        to={item.path}
-                                        onClick={() => setIsSidebarOpen(false)}
-                                        className={({ isActive }) => `
-                      flex items-center gap-4 px-6 py-3 rounded-xl font-bold transition-all text-sm
-                      ${isActive
-                                                ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
-                                                : 'text-white/50 hover:text-white hover:bg-white/5'}
-                    `}
-                                    >
-                                        {item.label}
-                                    </NavLink>
-                                ))}
+                                {group.items.map(item => {
+                                    const isLogout = item.path === '#logout';
+
+                                    const baseClasses = `
+                                        flex items-center gap-4 px-6 py-3 rounded-xl font-bold transition-all text-sm
+                                        ${isLogout ? 'text-red-400/60 hover:text-red-400 hover:bg-red-400/5' : ''}
+                                    `;
+
+                                    if (isLogout) {
+                                        return (
+                                            <button
+                                                key="logout"
+                                                onClick={item.onClick}
+                                                className={baseClasses}
+                                            >
+                                                {item.label}
+                                            </button>
+                                        );
+                                    }
+
+                                    return (
+                                        <NavLink
+                                            key={item.path}
+                                            to={item.path}
+                                            onClick={() => setIsSidebarOpen(false)}
+                                            className={({ isActive }) => `
+                                                ${baseClasses}
+                                                ${isActive
+                                                    ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
+                                                    : 'text-white/50 hover:text-white hover:bg-white/5'}
+                                            `}
+                                        >
+                                            {item.label}
+                                        </NavLink>
+                                    );
+                                })}
                             </div>
                             {idx < menuGroups.length - 1 && (
                                 <div className="mx-6 pt-4 border-b border-white/5" />
@@ -117,13 +147,6 @@ const AdminLayout: React.FC = () => {
                         </div>
                     ))}
                 </nav>
-
-                <button
-                    onClick={handleLogout}
-                    className="mt-auto flex items-center gap-4 px-6 py-4 rounded-2xl font-bold text-red-400 hover:bg-red-400/10 transition-all border border-red-400/20"
-                >
-                    <span>Sair da conta</span>
-                </button>
             </aside>
 
             {/* Main Content */}
