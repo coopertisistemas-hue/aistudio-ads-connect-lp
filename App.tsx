@@ -2,8 +2,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LpPage from './pages/LpPage';
 import LoginPage from './pages/LoginPage';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import ProtectedRoute from './auth/ProtectedRoute';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminLeadsPage from './pages/admin/AdminLeadsPage';
+import AdminAdsPage from './pages/admin/AdminAdsPage';
+import AdminSitesPage from './pages/admin/AdminSitesPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 
 const App: React.FC = () => {
   return (
@@ -16,10 +20,16 @@ const App: React.FC = () => {
           path="/admin"
           element={
             <ProtectedRoute>
-              <AdminDashboardPage />
+              <AdminLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="leads" element={<AdminLeadsPage />} />
+          <Route path="anuncios" element={<AdminAdsPage />} />
+          <Route path="sites" element={<AdminSitesPage />} />
+          <Route path="configuracoes" element={<AdminSettingsPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
