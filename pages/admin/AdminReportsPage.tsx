@@ -1,0 +1,132 @@
+import React, { useEffect, useState } from 'react';
+import { reportsService, ReportStats } from '../../admin/services/reportsService';
+
+const AdminReportsPage: React.FC = () => {
+    const [stats, setStats] = useState<ReportStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadStats();
+    }, []);
+
+    const loadStats = async () => {
+        setLoading(true);
+        try {
+            const data = await reportsService.getGlobalStats();
+            setStats(data);
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex items-center gap-3 text-brandDark/30 font-bold">
+                    <div className="w-5 h-5 border-2 border-brandDark/30 border-t-transparent rounded-full animate-spin" />
+                    Consolidando dados...
+                </div>
+            </div>
+        );
+    }
+
+    if (!stats || (stats.leads.total === 0 && stats.sites.total === 0 && stats.ads.total === 0)) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+                <div className="w-20 h-20 bg-brandDark/5 rounded-full flex items-center justify-center">
+                    <svg className="w-10 h-10 text-brandDark/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                </div>
+                <div className="max-w-md space-y-2">
+                    <h2 className="text-2xl font-black text-brandDark">Sem dados suficientes</h2>
+                    <p className="text-brandDark/40 font-bold">Ainda não há dados para gerar relatórios. Comece criando leads, sites ou anúncios nos respectivos módulos.</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-10 pb-20 animate-fadeIn">
+            {/* Header */}
+            <div>
+                <h1 className="text-3xl font-black text-brandDark">Relatórios & Insights</h1>
+                <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Visão consolidada da sua operação comercial e de marketing.</p>
+            </div>
+
+            {/* Main KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <KPICard label="Total de Leads" value={stats.leads.total} subLabel="Base histórica" icon="leads" />
+                <KPICard label="Leads Útimos 7 Dias" value={stats.leads.last7Days} subLabel="Novos contatos" icon="time" variant="primary" />
+                <KPICard label="Ads Ativos Agora" value={stats.ads.activeNow} subLabel={`De ${stats.ads.total} campanhas`} icon="ads" />
+                <KPICard label="Sites em Operação" value={stats.sites.total} subLabel="LPs publicadas" icon="sites" />
+            </div>
+
+            {/* Breakdowns */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Leads by Status */}
+                <div className="admin-card p-8">
+                    <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
+                        <div className="w-2 h-6 bg-primary rounded-full" />
+                        Status dos Leads
+                    </h3>
+                    <div className="space-y-4">
+                        {Object.entries(stats.leads.byStatus).map(([status, count]) => (
+                            <div key={status} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
+                                <span className={`text-xs font-black uppercase tracking-widest text-brandDark/60`}>
+                                    {status.replace('_', ' ')}
+                                </span>
+                                <span className="text-lg font-black text-brandDark">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Ads by Channel */}
+                <div className="admin-card p-8">
+                    <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
+                        <div className="w-2 h-6 bg-brandDark rounded-full" />
+                        Canais de Anúncios
+                    </h3>
+                    <div className="space-y-4">
+                        {Object.entries(stats.ads.byChannel).map(([channel, count]) => (
+                            <div key={channel} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-brandDark text-white flex items-center justify-center font-black text-[10px] uppercase">
+                                        {channel.slice(0, 1)}
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-widest text-brandDark/60">
+                                        {channel}
+                                    </span>
+                                </div>
+                                <span className="text-lg font-black text-brandDark">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const KPICard: React.FC<{ label: string, value: number, subLabel: string, icon: string, variant?: 'default' | 'primary' }> = ({ label, value, subLabel, icon, variant = 'default' }) => {
+    return (
+        <div className={`p-8 rounded-[32px] border transition-all hover:shadow-2xl hover:-translate-y-1 ${variant === 'primary' ? 'bg-brandDark border-brandDark text-white shadow-xl shadow-brandDark/20' : 'bg-white border-black/5 shadow-sm shadow-black/5'}`}>
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${variant === 'primary' ? 'text-white/40' : 'text-brandDark/30'}`}>{label}</p>
+            <div className="flex items-end justify-between">
+                <div>
+                    <h4 className="text-4xl font-black mb-1">{value}</h4>
+                    <p className={`text-[10px] font-bold ${variant === 'primary' ? 'text-white/30' : 'text-brandDark/20'}`}>{subLabel}</p>
+                </div>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${variant === 'primary' ? 'bg-primary text-brandDark' : 'bg-[#F8F9FA] text-brandDark/20'}`}>
+                    {icon === 'leads' && <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>}
+                    {icon === 'time' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                    {icon === 'ads' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>}
+                    {icon === 'sites' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AdminReportsPage;
