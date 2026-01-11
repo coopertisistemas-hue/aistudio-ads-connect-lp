@@ -63,7 +63,7 @@ const AdminConfigPage: React.FC = () => {
                 config.timezone !== tempConfig.timezone ||
                 config.currency !== tempConfig.currency;
         }
-        return JSON.stringify(config[section]) !== JSON.stringify(tempConfig[section]);
+        return JSON.stringify(config[section as keyof OrgConfig]) !== JSON.stringify(tempConfig[section as keyof OrgConfig]);
     };
 
     const validate = (section: ConfigSection): boolean => {
@@ -172,6 +172,49 @@ const AdminConfigPage: React.FC = () => {
         }
     };
 
+    const handleRestoreDefaults = () => {
+        if (!window.confirm('Restaurar configurações padrões? Isso sobrescreverá sua configuração atual e não pode ser desfeito.')) return;
+
+        try {
+            const data = configService.resetConfig();
+            setConfig(data);
+            setTempConfig(data);
+            setEditingSection(null);
+            setErrors({});
+            toast.success('Configurações restauradas com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao restaurar padrões.');
+        }
+    };
+
+    const handleExportJSON = () => {
+        if (!config) return;
+        try {
+            const jsonString = JSON.stringify(config, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `adsconnect-config-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast.success('Configuração exportada com sucesso!');
+        } catch (error) {
+            toast.error('Erro ao exportar configuração.');
+        }
+    };
+
+    const handleCopyConfig = async () => {
+        if (!config) return;
+        try {
+            const jsonString = JSON.stringify(config, null, 2);
+            await navigator.clipboard.writeText(jsonString);
+            toast.success('Configuração copiada para a área de transferência!');
+        } catch (error) {
+            toast.error('Erro ao copiar configuração.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -188,10 +231,28 @@ const AdminConfigPage: React.FC = () => {
     return (
         <div className="space-y-10 pb-20 animate-fadeIn">
             {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-brandDark">Ajustes & Configurações</h1>
+                    <h1 className="text-3xl font-black text-brandDark uppercase tracking-tight">Ajustes & Configurações</h1>
                     <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Gerencie os detalhes operacionais e visuais da sua organização.</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleCopyConfig}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-black/5 text-brandDark/60 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all shadow-sm"
+                        title="Copiar JSON"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                        Copiar
+                    </button>
+                    <button
+                        onClick={handleExportJSON}
+                        className="flex items-center gap-2 px-4 py-2 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-brandDark/20"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Exportar JSON
+                    </button>
                 </div>
             </div>
 
@@ -319,7 +380,7 @@ const AdminConfigPage: React.FC = () => {
                     )}
                 </SectionCard>
 
-                {/* Integrations Module - Sprint 3 */}
+                {/* Integrations Module */}
                 <div className="md:col-span-2 space-y-6">
                     <div className="flex items-center gap-4">
                         <div className="h-0.5 flex-1 bg-black/5" />
@@ -354,15 +415,38 @@ const AdminConfigPage: React.FC = () => {
                         />
                     </div>
                 </div>
+
+                {/* Danger Zone */}
+                <div className="md:col-span-2 mt-8">
+                    <div className="admin-card p-8 border-red-500/20 bg-red-500/5">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                            <div>
+                                <h3 className="text-sm font-black text-red-600 uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Zona de Perigo
+                                </h3>
+                                <p className="text-xs font-bold text-red-600/60">Restaurar as configurações para o padrão de fábrica. Esta ação não pode ser desfeita.</p>
+                            </div>
+                            <button
+                                onClick={handleRestoreDefaults}
+                                className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+                            >
+                                Restaurar Padrões
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Disclaimer */}
-            <div className="max-w-xl p-6 bg-brandDark/5 rounded-3xl border border-black/5">
-                <p className="text-[10px] font-bold text-brandDark/40 leading-relaxed italic">
-                    <span className="text-brandDark font-black mr-2 uppercase">Aviso:</span>
-                    As conexões acima são placeholders simulados para validação de interface e fluxos de dados. A integração real via OAuth 2.0 será implementada na Fase 2 do projeto.
-                </p>
-            </div>
+            {/* Footer / Tip */}
+            {!editingSection && (
+                <div className="max-w-xl p-6 bg-brandDark/5 rounded-3xl border border-black/5">
+                    <p className="text-[10px] font-bold text-brandDark/60 leading-relaxed italic">
+                        <span className="text-brandDark font-black mr-2 uppercase tracking-tight">Dica:</span>
+                        Utilize a função de **Exportar JSON** para fazer backups periódicos da sua configuração antes de realizar grandes mudanças na identidade visual ou integrações.
+                    </p>
+                </div>
+            )}
         </div>
     );
 };
@@ -385,10 +469,7 @@ const SectionCard: React.FC<{
                 {title}
             </h3>
             {!isEditing ? (
-                <button
-                    onClick={onEdit}
-                    className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-brandDark transition-colors px-3 py-1 bg-primary/10 rounded-lg hover:bg-primary/20"
-                >
+                <button onClick={onEdit} className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-brandDark transition-colors px-3 py-1 bg-primary/10 rounded-lg outline-none">
                     Editar
                 </button>
             ) : (
@@ -419,10 +500,10 @@ const IntegrationCard: React.FC<{
     <div className={`admin-card p-6 flex flex-col border-t-4 ${status.connected ? 'border-primary' : 'border-brandDark/10'} transition-all hover:translate-y-[-4px]`}>
         <div className="flex justify-between items-center mb-4">
             <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${status.connected ? 'bg-primary/10 text-primary' : 'bg-black/5 text-brandDark/30'}`}>
-                {status.connected ? 'Conectado' : 'Desconectado'}
+                {status.connected ? 'Conectado' : 'Descon.'}
             </span>
             {status.connected && (
-                <button onClick={onDisconnect} disabled={loading} className="text-[9px] font-bold text-red-500 hover:underline">Desconectar</button>
+                <button onClick={onDisconnect} disabled={loading} className="text-[9px] font-bold text-red-500 hover:underline outline-none">Desconectar</button>
             )}
         </div>
 
@@ -434,19 +515,11 @@ const IntegrationCard: React.FC<{
                 <div className="p-3 bg-brandDark/5 rounded-xl space-y-2">
                     <div className="flex flex-col">
                         <span className="text-[8px] font-black text-brandDark/30 uppercase tracking-widest">Identificador</span>
-                        <span className="text-[10px] font-bold text-brandDark/70">{status.accountLabel || status.propertyLabel}</span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-brandDark/30 uppercase tracking-widest">Conectado em</span>
-                        <span className="text-[10px] font-bold text-brandDark/70">{status.connectedAt ? new Date(status.connectedAt).toLocaleDateString('pt-BR') : '-'}</span>
+                        <span className="text-[10px] font-bold text-brandDark/70 truncate">{status.accountLabel || status.propertyLabel}</span>
                     </div>
                 </div>
             ) : (
-                <button
-                    onClick={onConnect}
-                    disabled={loading}
-                    className="w-full py-3 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
-                >
+                <button onClick={onConnect} disabled={loading} className="w-full py-3 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all outline-none">
                     Conectar Conta
                 </button>
             )}

@@ -14,9 +14,7 @@ export const configService = {
             const config = JSON.parse(stored);
 
             // Migration / Normalization Layer (Sprint 3)
-            // If we find the old flat boolean structure, convert it to the new object structure
             if (config.integrations && ('googleAdsConnected' in config.integrations)) {
-                console.log('Migrating integrations to new structure...');
                 const old = config.integrations as any;
                 config.integrations = {
                     googleAds: { connected: !!old.googleAdsConnected },
@@ -36,6 +34,11 @@ export const configService = {
 
     saveConfig(config: OrgConfig): void {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    },
+
+    resetConfig(): OrgConfig {
+        this.saveConfig(DEFAULT_CONFIG);
+        return DEFAULT_CONFIG;
     },
 
     /**
@@ -64,7 +67,6 @@ export const configService = {
             },
             integrations: {
                 ...(current.integrations || {}),
-                // Sprint 3: Deep merge even for the 3rd level
                 googleAds: {
                     ...(current.integrations?.googleAds || {}),
                     ...(changes.integrations?.googleAds || {})
