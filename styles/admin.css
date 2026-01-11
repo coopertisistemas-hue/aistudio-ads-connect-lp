@@ -1,25 +1,34 @@
-/* Admin Specific Styles */
-.admin-sidebar {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+:root {
+    --admin-primary: #1FDB64;
+    --admin-brand-dark: #0D1117;
+    --admin-bg: #F0F2F5;
+    --admin-surface: #FFFFFF;
+    --admin-border: rgba(13, 17, 23, 0.05);
+    --admin-text-main: #0D1117;
+    --admin-text-secondary: rgba(13, 17, 23, 0.4);
+    --admin-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --admin-shadow-md: 0 10px 40px -10px rgba(13, 17, 23, 0.06);
+    --admin-shadow-lg: 0 30px 60px -12px rgba(13, 17, 23, 0.12);
+    --admin-radius: 32px;
 }
 
-.admin-card {
-    background: white;
-    border-radius: 32px;
-    border: 1px solid rgba(13, 17, 23, 0.04);
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.01),
-        0 2px 4px -1px rgba(0, 0, 0, 0.01),
-        0 10px 15px -3px rgba(0, 0, 0, 0.02);
+/* Admin Specific Styles */
+.admin-sidebar {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.admin-card {
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    border: 1px solid var(--admin-border);
+    box-shadow: var(--admin-shadow-md);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .admin-card:hover {
-    box-shadow:
-        0 20px 25px -5px rgba(0, 0, 0, 0.04),
-        0 10px 10px -5px rgba(0, 0, 0, 0.02);
-    transform: translateY(-4px);
-    border-color: rgba(13, 17, 23, 0.08);
+    box-shadow: var(--admin-shadow-lg);
+    transform: translateY(-6px);
+    border-color: rgba(31, 219, 100, 0.2);
 }
 
 .admin-table {
@@ -30,53 +39,58 @@
 
 .admin-table th {
     text-align: left;
-    padding: 20px 32px;
-    background: rgba(13, 17, 23, 0.01);
-    color: rgba(13, 17, 23, 0.4);
-    font-size: 10px;
+    padding: 24px 40px;
+    background: rgba(13, 17, 23, 0.015);
+    color: var(--admin-text-secondary);
+    font-size: 11px;
     font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    border-bottom: 1px solid rgba(13, 17, 23, 0.03);
+    letter-spacing: 0.2em;
+    border-bottom: 2px solid var(--admin-border);
 }
 
 .admin-table td {
-    padding: 24px 32px;
-    border-bottom: 1px solid rgba(13, 17, 23, 0.02);
+    padding: 32px 40px;
+    border-bottom: 1px solid rgba(13, 17, 23, 0.03);
     vertical-align: middle;
+    transition: background 0.2s ease;
+}
+
+.admin-table tr:hover td {
+    background: rgba(13, 17, 23, 0.005);
 }
 
 .status-badge {
-    padding: 4px 12px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
 }
 
 .status-novo {
-    background: rgba(31, 219, 100, 0.1);
-    color: #16a34a;
+    background: rgba(31, 219, 100, 0.12);
+    color: #059669;
 }
 
 .status-em_contato {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(59, 130, 246, 0.12);
     color: #2563eb;
 }
 
 .status-qualificado {
-    background: rgba(139, 92, 246, 0.1);
+    background: rgba(139, 92, 246, 0.12);
     color: #7c3aed;
 }
 
 .status-convertido {
-    background: #1fdb64;
-    color: #0d1117;
+    background: var(--admin-primary);
+    color: var(--admin-brand-dark);
 }
 
 .status-perdido {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.12);
     color: #dc2626;
 }
 
@@ -84,12 +98,12 @@
 .lead-drawer-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(13, 17, 23, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(13, 17, 23, 0.6);
+    backdrop-filter: blur(8px);
     z-index: 100;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.4s ease;
 }
 
 .lead-drawer-overlay.active {
@@ -99,16 +113,18 @@
 
 .lead-drawer {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    top: 20px;
+    right: 20px;
+    bottom: 20px;
     width: 100%;
-    max-width: 500px;
+    max-width: 540px;
     background: white;
     z-index: 101;
-    transform: translateX(100%);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: -10px 0 50px rgba(0, 0, 0, 0.1);
+    border-radius: 40px;
+    transform: translateX(120%);
+    transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+    box-shadow: -20px 0 80px rgba(13, 17, 23, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .lead-drawer.active {
@@ -116,33 +132,41 @@
 }
 
 .kpi-card {
-    background: white;
-    border-radius: 32px;
-    border: 1px solid rgba(13, 17, 23, 0.04);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 32px;
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    border: 1px solid var(--admin-border);
+    box-shadow: var(--admin-shadow-md);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 40px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+}
+
+.kpi-card:hover {
+    box-shadow: var(--admin-shadow-lg);
+    transform: translateY(-8px);
+    border-color: rgba(31, 219, 100, 0.3);
 }
 
 .admin-btn-icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 16px;
+    border-radius: 14px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
 }
 
 .admin-btn-icon:active {
-    transform: scale(0.92);
+    transform: scale(0.9);
 }
 
 .admin-btn-icon:hover {
     background: rgba(13, 17, 23, 0.04);
+    border-color: rgba(13, 17, 23, 0.04);
 }
 
 /* Custom Scrollbar */
@@ -160,5 +184,5 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--admin-primary);
 }

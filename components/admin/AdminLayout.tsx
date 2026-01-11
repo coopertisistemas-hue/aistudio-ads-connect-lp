@@ -126,20 +126,20 @@ const AdminLayout: React.FC = () => {
                     <span className="text-xl font-black tracking-tight uppercase">ADS <span className="text-primary">Connect</span></span>
                 </div>
 
-                <nav className="flex-1 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
+                <nav className="flex-1 space-y-12 overflow-y-auto pr-2 custom-scrollbar pt-4">
                     {menuGroups.map((group, idx) => (
-                        <div key={idx} className="space-y-3">
-                            <h3 className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                        <div key={idx} className="space-y-6">
+                            <h3 className="px-6 text-[11px] font-black uppercase tracking-[0.3em] text-white/20">
                                 {group.title}
                             </h3>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 {group.items.map(item => {
                                     const isLogout = item.path === '#logout';
                                     const Icon = item.icon;
 
                                     const baseClasses = `
-                                        flex items-center gap-4 px-6 py-4 rounded-[20px] font-black transition-all text-sm group relative
-                                        ${isLogout ? 'text-red-400/40 hover:text-red-400 hover:bg-red-400/5' : ''}
+                                        flex items-center gap-5 px-6 py-4 rounded-[24px] font-black transition-all text-[13px] group relative
+                                        ${isLogout ? 'text-red-400/30 hover:text-red-400 hover:bg-red-400/5' : ''}
                                     `;
 
                                     if (isLogout) {
@@ -149,7 +149,7 @@ const AdminLayout: React.FC = () => {
                                                 onClick={item.onClick}
                                                 className={baseClasses}
                                             >
-                                                <Icon size={20} className="opacity-40 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
+                                                <Icon size={18} className="opacity-30 group-hover:opacity-100 transition-opacity" strokeWidth={2.5} />
                                                 {item.label}
                                             </button>
                                         );
@@ -163,24 +163,21 @@ const AdminLayout: React.FC = () => {
                                             className={({ isActive }) => `
                                                 ${baseClasses}
                                                 ${isActive
-                                                    ? 'bg-white/[0.03] text-primary shadow-2xl shadow-brandDark/50'
-                                                    : 'text-white/30 hover:text-white hover:bg-white/5'}
+                                                    ? 'bg-white/[0.05] text-primary shadow-2xl shadow-brandDark'
+                                                    : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]'}
                                             `}
                                         >
                                             {({ isActive }) => (
                                                 <>
-                                                    {isActive && <div className="absolute left-0 w-1.5 h-6 bg-primary rounded-r-full shadow-[4px_0_15px_rgba(255,230,0,0.4)]" />}
-                                                    <Icon size={20} className={`transition-all ${isActive ? 'scale-110 opacity-100' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`} strokeWidth={isActive ? 2.5 : 2} />
-                                                    {item.label}
+                                                    {isActive && <div className="absolute left-0 w-1 h-6 bg-primary rounded-r-full shadow-[4px_0_15px_rgba(31,219,100,0.5)]" />}
+                                                    <Icon size={18} className={`transition-all duration-300 ${isActive ? 'scale-110 opacity-100' : 'opacity-30 group-hover:opacity-100 group-hover:scale-110'}`} strokeWidth={isActive ? 2.5 : 2} />
+                                                    <span className="tracking-tight">{item.label}</span>
                                                 </>
                                             )}
                                         </NavLink>
                                     );
                                 })}
                             </div>
-                            {idx < menuGroups.length - 1 && (
-                                <div className="mx-6 pt-4 border-b border-white/5" />
-                            )}
                         </div>
                     ))}
                 </nav>
