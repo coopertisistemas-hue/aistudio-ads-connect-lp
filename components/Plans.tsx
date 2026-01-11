@@ -1,5 +1,6 @@
-
 import React, { useEffect, useRef, useState } from 'react';
+import { ANCHORS } from '../config/constants';
+import CTAButton from './CTAButton';
 
 const Plans: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -44,12 +45,11 @@ const Plans: React.FC = () => {
   ];
 
   return (
-    <section 
-      id="planos" 
+    <section
+      id={ANCHORS.PLANOS}
       ref={sectionRef}
-      className={`py-24 bg-white transition-all duration-1000 ease-out transform ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'
-      }`}
+      className={`py-24 bg-white transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-20">
@@ -61,20 +61,19 @@ const Plans: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan, i) => (
-            <div 
-              key={i} 
-              className={`relative flex flex-col p-10 rounded-[48px] border transition-all duration-700 hover:-translate-y-4 hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] hover:scale-[1.02] ${
-                plan.highlight 
-                  ? 'bg-brandDark text-white border-brandDark shadow-2xl z-10' 
-                  : 'bg-brandLight text-brandDark border-brandDark/5'
-              }`}
+            <div
+              key={i}
+              className={`relative flex flex-col p-10 rounded-[48px] border transition-all duration-700 hover:-translate-y-4 hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] hover:scale-[1.02] ${plan.highlight
+                ? 'bg-brandDark text-white border-brandDark shadow-2xl z-10'
+                : 'bg-brandLight text-brandDark border-brandDark/5'
+                }`}
             >
               {plan.highlight && (
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-primary text-brandDark text-xs font-black uppercase tracking-widest px-6 py-2 rounded-full z-20 shadow-lg shadow-primary/20">
                   Mais Recomendado
                 </div>
               )}
-              
+
               <div className="mb-10">
                 <h3 className="text-2xl font-black mb-4">{plan.name}</h3>
                 <p className={`text-sm leading-relaxed ${plan.highlight ? 'text-white/60' : 'text-brandDark/60'}`}>
@@ -93,13 +92,14 @@ const Plans: React.FC = () => {
                 </ul>
               </div>
 
-              <button className={`w-full py-5 rounded-2xl font-black text-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl hover:scale-[1.03] active:scale-95 ${
-                plan.highlight 
-                  ? 'bg-primary text-brandDark hover:bg-white hover:text-brandDark' 
-                  : 'bg-brandDark text-white hover:bg-primary hover:text-brandDark'
-              }`}>
-                {plan.cta}
-              </button>
+              <CTAButton
+                variant={plan.highlight ? 'secondary' : 'primary'}
+                label={plan.cta}
+                trackingName="cta_buy_plan_click"
+                trackingData={{ plan: plan.name }}
+                whatsappMessage={`Olá! Tenho interesse no plano ${plan.name} do ADS Connect.`}
+                className="w-full py-5 text-lg"
+              />
             </div>
           ))}
         </div>

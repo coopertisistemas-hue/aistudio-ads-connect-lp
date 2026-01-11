@@ -8,16 +8,24 @@ import AdminLeadsPage from './pages/admin/AdminLeadsPage';
 import AdminAdsPage from './pages/admin/AdminAdsPage';
 import AdminSitesPage from './pages/admin/AdminSitesPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import AboutPage from './pages/AboutPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import ProtectedRoute from './auth/ProtectedRoute';
+import { ROUTES } from './config/constants';
 
 const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/lp" element={<LpPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<Navigate to={ROUTES.LP} replace />} />
+        <Route path={ROUTES.LP} element={<LpPage />} />
+        <Route path={ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={ROUTES.ABOUT} element={<AboutPage />} />
+        <Route path={ROUTES.TERMS} element={<TermsPage />} />
+        <Route path={ROUTES.PRIVACY} element={<PrivacyPage />} />
         <Route
-          path="/admin"
+          path={ROUTES.ADMIN}
           element={
             <ProtectedRoute>
               <AdminLayout />
@@ -30,6 +38,7 @@ const App: React.FC = () => {
           <Route path="sites" element={<AdminSitesPage />} />
           <Route path="configuracoes" element={<AdminSettingsPage />} />
         </Route>
+        <Route path="*" element={<Navigate to={ROUTES.LP} replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,5 +1,5 @@
-
 import React, { useEffect, useRef, useState } from 'react';
+import { ANCHORS } from '../config/constants';
 
 const Solution: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -43,12 +43,11 @@ const Solution: React.FC = () => {
   ];
 
   return (
-    <section 
-      id="solucao" 
+    <section
+      id={ANCHORS.SOLUCAO}
       ref={sectionRef}
-      className={`py-24 bg-brandLight transition-all duration-1000 ease-out transform ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-      }`}
+      className={`py-24 bg-brandLight transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row items-end justify-between gap-8 mb-16">
@@ -62,15 +61,15 @@ const Solution: React.FC = () => {
           </div>
           <div className="hidden lg:block">
             <div className="p-4 bg-brandDark rounded-2xl">
-               <span className="text-primary font-bold text-sm tracking-widest uppercase">Expertise B2B</span>
+              <span className="text-primary font-bold text-sm tracking-widest uppercase">Expertise B2B</span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {blocks.map((block, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="bg-white border border-brandDark/5 p-8 rounded-[40px] shadow-sm flex flex-col justify-between hover:shadow-xl hover:border-primary/20 transition-all group"
             >
               <div>

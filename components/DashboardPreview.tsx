@@ -1,5 +1,5 @@
-
 import React, { useEffect, useRef, useState } from 'react';
+import { ANCHORS } from '../config/constants';
 
 const DashboardPreview: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -20,12 +20,11 @@ const DashboardPreview: React.FC = () => {
   }, []);
 
   return (
-    <section 
-      id="controle" 
+    <section
+      id={ANCHORS.CONTROLE}
       ref={sectionRef}
-      className={`py-24 bg-brandLight overflow-hidden transition-all duration-1000 ease-out transform ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-      }`}
+      className={`py-24 bg-brandLight overflow-hidden transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row items-center gap-20">
@@ -36,7 +35,7 @@ const DashboardPreview: React.FC = () => {
             <p className="text-2xl font-bold text-primary mb-10 leading-relaxed">
               Você vê. Você entende. Você decide.
             </p>
-            
+
             <ul className="space-y-6">
               {[
                 "Leads qualificados em tempo real",
@@ -92,13 +91,13 @@ const DashboardPreview: React.FC = () => {
                 <p className="text-white/40 text-xs font-bold uppercase mb-6">Fluxo de Conversão Semanal</p>
                 <div className="flex items-end justify-between h-32 gap-2">
                   {[40, 60, 45, 90, 65, 80, 100].map((h, i) => (
-                    <div 
-                      key={i} 
-                      style={{ height: `${h}%` }} 
+                    <div
+                      key={i}
+                      style={{ height: `${h}%` }}
                       className="flex-1 bg-primary/40 rounded-t-lg hover:bg-primary transition-all cursor-pointer relative group"
                     >
                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-brandDark px-2 py-1 rounded text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        Semana {i+1}
+                        Semana {i + 1}
                       </div>
                     </div>
                   ))}
@@ -108,7 +107,7 @@ const DashboardPreview: React.FC = () => {
 
             {/* Float Element */}
             <div className="absolute -bottom-10 -right-10 bg-primary p-6 rounded-3xl shadow-2xl shadow-primary/40 hidden lg:block animate-bounce [animation-duration:3s]">
-              <p className="text-brandDark font-black text-xl leading-tight">Decisões baseadas <br/> em dados reais.</p>
+              <p className="text-brandDark font-black text-xl leading-tight">Decisões baseadas <br /> em dados reais.</p>
             </div>
           </div>
         </div>

@@ -1,12 +1,12 @@
-
 import React, { useEffect, useRef, useState } from 'react';
+import { ANCHORS } from '../config/constants';
 
 const FAQItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="border-b border-brandDark/5">
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-6 text-left group"
       >
@@ -51,7 +51,7 @@ const FAQ: React.FC = () => {
     },
     {
       question: "Funciona só para turismo?",
-      answer: "Não. Embora tenhamos forte expertise em turismo e serviços locais, nossa metodologia de presença estruturada é aplicável a qualquer negócio que dependa do digital para vender."
+      answer: "Não. Embora temamos forte expertise em turismo e serviços locais, nossa metodologia de presença estruturada é aplicável a qualquer negócio que dependa do digital para vender."
     },
     {
       question: "Vou conseguir acompanhar tudo?",
@@ -68,11 +68,10 @@ const FAQ: React.FC = () => {
   ];
 
   return (
-    <section 
-      ref={sectionRef}
-      className={`py-24 bg-brandLight transition-all duration-1000 ease-out transform ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-      }`}
+    <section
+      id={ANCHORS.FAQ}
+      className={`py-24 bg-brandLight transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+        }`}
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl md:text-5xl font-extrabold text-brandDark mb-16 text-center">Ficou alguma dúvida?</h2>
