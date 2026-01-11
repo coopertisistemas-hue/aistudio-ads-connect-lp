@@ -1,7 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { configService } from '../../admin/services/configService';
 import { OrgConfig } from '../../admin/types/Config';
 import { toast } from 'sonner';
+import AdminHeader from '../../components/admin/AdminHeader';
+import AdminStatusBadge from '../../components/admin/AdminStatusBadge';
+import AdminEmptyState from '../../components/admin/AdminEmptyState';
+import { AdminTable, FilterBar, AdminDrawer, AdminModal } from '../../components/admin/AdminUI';
+import { trackEvent } from '../../lib/tracking';
 
 type ConfigSection = 'org' | 'brand' | 'contact' | 'links' | 'integrations';
 
@@ -23,47 +28,29 @@ const AdminConfigPage: React.FC = () => {
 
     const loadConfig = async () => {
         setLoading(true);
-        const data = configService.getConfig();
-        // Artificial delay for premium feel
-        await new Promise(r => setTimeout(r, 600));
-        setConfig(data);
-        setTempConfig(data);
-        setLoading(false);
+        try {
+            const data = configService.getConfig();
+            // Artificial delay for premium feel
+            await new Promise(r => setTimeout(r, 600));
+            setConfig(data);
+            setTempConfig(data);
+        } catch (error) {
+            toast.error('Erro ao carregar configurações');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleStartEdit = (section: ConfigSection) => {
-        if (editingSection && editingSection !== section) {
-            if (hasChanges(editingSection)) {
-                if (!window.confirm('Você tem alterações não salvas. Deseja descartá-las?')) {
-                    return;
-                }
-            }
-        }
         setEditingSection(section);
         setErrors({});
-        setTempConfig(config);
+        setTempConfig(JSON.parse(JSON.stringify(config))); // Deep clone
     };
 
     const handleCancel = () => {
-        if (editingSection && hasChanges(editingSection)) {
-            if (!window.confirm('Descartar alterações?')) {
-                return;
-            }
-        }
         setEditingSection(null);
         setErrors({});
-        setTempConfig(config);
-    };
-
-    const hasChanges = (section: ConfigSection) => {
-        if (!config || !tempConfig) return false;
-        if (section === 'org') {
-            return config.orgName !== tempConfig.orgName ||
-                config.orgSlug !== tempConfig.orgSlug ||
-                config.timezone !== tempConfig.timezone ||
-                config.currency !== tempConfig.currency;
-        }
-        return JSON.stringify(config[section as keyof OrgConfig]) !== JSON.stringify(tempConfig[section as keyof OrgConfig]);
+        setTempConfig(null);
     };
 
     const validate = (section: ConfigSection): boolean => {
@@ -113,27 +100,30 @@ const AdminConfigPage: React.FC = () => {
         return true;
     };
 
-    const handleSave = async (section: ConfigSection) => {
-        if (!validate(section)) return;
+    const handleSave = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!editingSection || !tempConfig) return;
+        if (!validate(editingSection)) return;
 
         setSaving(true);
         try {
+            const section = editingSection;
             const dataToUpdate = section === 'org'
                 ? {
-                    orgName: tempConfig!.orgName,
-                    orgSlug: tempConfig!.orgSlug,
-                    timezone: tempConfig!.timezone,
-                    currency: tempConfig!.currency
+                    orgName: tempConfig.orgName,
+                    orgSlug: tempConfig.orgSlug,
+                    timezone: tempConfig.timezone,
+                    currency: tempConfig.currency
                 }
-                : { [section]: tempConfig![section as keyof OrgConfig] };
+                : { [section]: tempConfig[section as keyof OrgConfig] };
 
             const updated = await configService.updateConfig(dataToUpdate as Partial<OrgConfig>);
             setConfig(updated);
             setTempConfig(updated);
             setEditingSection(null);
+            trackEvent('admin_config_update', { section });
             toast.success('Configurações salvas com sucesso!');
         } catch (error) {
-            console.error('Save error:', error);
             toast.error('Erro ao salvar configurações.');
         } finally {
             setSaving(false);
@@ -164,6 +154,7 @@ const AdminConfigPage: React.FC = () => {
             const updated = await configService.updateConfig({ integrations: updatedIntegrations });
             setConfig(updated);
             setTempConfig(updated);
+            trackEvent('admin_integration_toggle', { type, connected: connect });
             toast.success(connect ? `Conectado ao ${type} com sucesso!` : `Desconectado do ${type}.`);
         } catch (error) {
             toast.error('Erro ao processar integração.');
@@ -181,6 +172,7 @@ const AdminConfigPage: React.FC = () => {
             setTempConfig(data);
             setEditingSection(null);
             setErrors({});
+            trackEvent('admin_config_reset');
             toast.success('Configurações restauradas com sucesso!');
         } catch (error) {
             toast.error('Erro ao restaurar padrões.');
@@ -198,22 +190,17 @@ const AdminConfigPage: React.FC = () => {
             link.download = `adsconnect-config-${new Date().toISOString().split('T')[0]}.json`;
             link.click();
             URL.revokeObjectURL(url);
+            trackEvent('admin_config_export');
             toast.success('Configuração exportada com sucesso!');
         } catch (error) {
             toast.error('Erro ao exportar configuração.');
         }
     };
 
-    const handleCopyConfig = async () => {
-        if (!config) return;
-        try {
-            const jsonString = JSON.stringify(config, null, 2);
-            await navigator.clipboard.writeText(jsonString);
-            toast.success('Configuração copiada para a área de transferência!');
-        } catch (error) {
-            toast.error('Erro ao copiar configuração.');
-        }
-    };
+    const activeIntegrationsCount = useMemo(() => {
+        if (!config) return 0;
+        return Object.values(config.integrations).filter(i => i.connected).length;
+    }, [config]);
 
     if (loading) {
         return (
@@ -226,310 +213,266 @@ const AdminConfigPage: React.FC = () => {
         );
     }
 
-    if (!config || !tempConfig) return null;
+    if (!config) return null;
 
     return (
-        <div className="space-y-10 pb-20 animate-fadeIn">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <h1 className="text-3xl font-black text-brandDark uppercase tracking-tight">Configurações</h1>
-                    <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Gerencie os detalhes operacionais e visuais da sua organização.</p>
-                </div>
+        <div className="space-y-8 pb-20">
+            <AdminHeader
+                title="Configurações"
+                description="Gerencie os detalhes operacionais e visuais da sua organização"
+                kpis={[{ label: 'Integrações Ativas', value: activeIntegrationsCount }]}
+                primaryAction={{
+                    label: 'Exportar JSON',
+                    onClick: handleExportJSON
+                }}
+            />
 
-                <div className="flex items-center gap-3">
+            <FilterBar>
+                <div className="flex items-center justify-between w-full">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brandDark/30">Preferências do Sistema</p>
                     <button
-                        onClick={handleCopyConfig}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-black/5 text-brandDark/60 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all shadow-sm"
-                        title="Copiar JSON"
+                        onClick={handleRestoreDefaults}
+                        className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors"
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                        Copiar
-                    </button>
-                    <button
-                        onClick={handleExportJSON}
-                        className="flex items-center gap-2 px-4 py-2 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-brandDark/20"
-                    >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        Exportar JSON
+                        Restaurar Padrões
                     </button>
                 </div>
-            </div>
+            </FilterBar>
 
-            {/* Grid of Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
                 {/* Organization Card */}
                 <SectionCard
                     title="Organização"
-                    color="primary"
-                    isEditing={editingSection === 'org'}
+                    color="bg-primary"
                     onEdit={() => handleStartEdit('org')}
-                    onCancel={handleCancel}
-                    onSave={() => handleSave('org')}
-                    loading={saving}
                 >
-                    {editingSection === 'org' ? (
-                        <div className="space-y-4">
-                            <Input label="Nome da Organização" value={tempConfig.orgName} onChange={val => setTempConfig({ ...tempConfig, orgName: val })} error={errors.orgName} />
-                            <Input label="Slug (Identificador)" value={tempConfig.orgSlug} onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} error={errors.orgSlug} helper="Apenas letras, números e hífens." />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select
-                                    label="Fuso Horário"
-                                    value={tempConfig.timezone}
-                                    onChange={val => setTempConfig({ ...tempConfig, timezone: val })}
-                                    options={[
-                                        { label: 'Brasília (GMT-3)', value: 'America/Sao_Paulo' },
-                                        { label: 'Amazonas (GMT-4)', value: 'America/Manaus' },
-                                        { label: 'Fernando de Noronha (GMT-2)', value: 'America/Noronha' },
-                                        { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' }
-                                    ]}
-                                />
-                                <Input label="Moeda" value={tempConfig.currency} onChange={val => setTempConfig({ ...tempConfig, currency: val })} />
-                            </div>
+                    <div className="space-y-4">
+                        <InfoRow label="Nome da Organização" value={config.orgName} />
+                        <InfoRow label="Slug (Identificador)" value={config.orgSlug} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <InfoRow label="Fuso Horário" value={config.timezone.split('/').pop()?.replace('_', ' ') || config.timezone} />
+                            <InfoRow label="Moeda" value={config.currency} />
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <InfoRow label="Nome da Organização" value={config.orgName} />
-                            <InfoRow label="Slug (Identificador)" value={config.orgSlug} />
-                            <div className="grid grid-cols-2 gap-4">
-                                <InfoRow label="Fuso Horário" value={config.timezone} />
-                                <InfoRow label="Moeda" value={config.currency} />
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </SectionCard>
 
                 {/* Branding Card */}
                 <SectionCard
                     title="Identidade Visual"
-                    color="blue-500"
-                    isEditing={editingSection === 'brand'}
+                    color="bg-blue-500"
                     onEdit={() => handleStartEdit('brand')}
-                    onCancel={handleCancel}
-                    onSave={() => handleSave('brand')}
-                    loading={saving}
                 >
-                    {editingSection === 'brand' ? (
-                        <div className="space-y-4">
-                            <div className="flex gap-4 items-end">
-                                <div className="flex-1">
-                                    <Input label="Cor Principal (Hex)" value={tempConfig.brand.primaryColor || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })} placeholder="#00E08F" error={errors.primaryColor} />
-                                </div>
-                                <div className="w-10 h-10 rounded-xl mb-1 shadow-inner border border-black/5" style={{ backgroundColor: tempConfig.brand.primaryColor || '#eee' }} />
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Cor Principal</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-brandDark">{config.brand.primaryColor}</span>
+                                <div className="w-6 h-6 rounded-lg shadow-inner border border-black/5" style={{ backgroundColor: config.brand.primaryColor }} />
                             </div>
-                            <Input label="Link do Logo (SVG/PNG)" value={tempConfig.brand.logoUrl || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })} placeholder="https://..." error={errors.logoUrl} />
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Cor Principal</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-brandDark">{config.brand.primaryColor}</span>
-                                    <div className="w-6 h-6 rounded-lg shadow-inner border border-black/5" style={{ backgroundColor: config.brand.primaryColor }} />
-                                </div>
-                            </div>
-                            <InfoRow label="Link do Logo" value={config.brand.logoUrl || "Não configurado"} isLink={!!config.brand.logoUrl} />
-                        </div>
-                    )}
+                        <InfoRow label="Link do Logo" value={config.brand.logoUrl || "Não configurado"} isLink={!!config.brand.logoUrl} />
+                    </div>
                 </SectionCard>
 
                 {/* Contact Card */}
                 <SectionCard
                     title="Contato & Suporte"
-                    color="purple-500"
-                    isEditing={editingSection === 'contact'}
+                    color="bg-purple-500"
                     onEdit={() => handleStartEdit('contact')}
-                    onCancel={handleCancel}
-                    onSave={() => handleSave('contact')}
-                    loading={saving}
                 >
-                    {editingSection === 'contact' ? (
-                        <div className="space-y-4">
-                            <Input label="E-mail Administrativo" value={tempConfig.contact.email || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })} placeholder="contato@empresa.com" error={errors.email} />
-                            <Input label="WhatsApp de Suporte" value={tempConfig.contact.whatsapp || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val.replace(/[^0-9+]/g, '') } })} placeholder="+55..." />
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <InfoRow label="E-mail Administrativo" value={config.contact.email || "N/A"} />
-                            <InfoRow label="WhatsApp de Suporte" value={config.contact.whatsapp || "N/A"} />
-                        </div>
-                    )}
+                    <div className="space-y-4">
+                        <InfoRow label="E-mail Administrativo" value={config.contact.email || "N/A"} />
+                        <InfoRow label="WhatsApp de Suporte" value={config.contact.whatsapp || "N/A"} />
+                    </div>
                 </SectionCard>
 
                 {/* Links Card */}
                 <SectionCard
                     title="Links Estratégicos"
-                    color="amber-500"
-                    isEditing={editingSection === 'links'}
+                    color="bg-amber-500"
                     onEdit={() => handleStartEdit('links')}
-                    onCancel={handleCancel}
-                    onSave={() => handleSave('links')}
-                    loading={saving}
                 >
-                    {editingSection === 'links' ? (
-                        <div className="space-y-4">
-                            <Input label="Website Oficial" value={tempConfig.links.website || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })} placeholder="https://..." error={errors.website} />
-                            <Input label="Política de Privacidade" value={tempConfig.links.privacyPolicy || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })} placeholder="https://..." error={errors.privacyPolicy} />
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <InfoRow label="Website Oficial" value={config.links.website || "N/A"} isLink />
-                            <InfoRow label="Política de Privacidade" value={config.links.privacyPolicy || "N/A"} isLink />
-                        </div>
-                    )}
+                    <div className="space-y-4">
+                        <InfoRow label="Website Oficial" value={config.links.website || "N/A"} isLink />
+                        <InfoRow label="Política de Privacidade" value={config.links.privacyPolicy || "N/A"} isLink />
+                    </div>
                 </SectionCard>
-
-                {/* Integrations Module */}
-                <div className="md:col-span-2 space-y-6">
-                    <div className="flex items-center gap-4">
-                        <div className="h-0.5 flex-1 bg-black/5" />
-                        <h2 className="text-xs font-black uppercase tracking-[0.3em] text-brandDark/30">Módulo de Integrações</h2>
-                        <div className="h-0.5 flex-1 bg-black/5" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <IntegrationCard
-                            name="Google Ads"
-                            description="Sincronize campanhas de busca e display."
-                            status={config.integrations.googleAds}
-                            onConnect={() => handleSimulateConnection('googleAds', true)}
-                            onDisconnect={() => handleSimulateConnection('googleAds', false)}
-                            loading={saving}
-                        />
-                        <IntegrationCard
-                            name="Meta Ads"
-                            description="Conecte Facebook e Instagram Ads."
-                            status={config.integrations.metaAds}
-                            onConnect={() => handleSimulateConnection('metaAds', true)}
-                            onDisconnect={() => handleSimulateConnection('metaAds', false)}
-                            loading={saving}
-                        />
-                        <IntegrationCard
-                            name="GA4 (Analytics)"
-                            description="Acompanhe eventos e conversões."
-                            status={config.integrations.ga4}
-                            onConnect={() => handleSimulateConnection('ga4', true)}
-                            onDisconnect={() => handleSimulateConnection('ga4', false)}
-                            loading={saving}
-                        />
-                    </div>
-                </div>
-
-                {/* Danger Zone */}
-                <div className="md:col-span-2 mt-8">
-                    <div className="admin-card p-8 border-red-500/20 bg-red-500/5">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                            <div>
-                                <h3 className="text-sm font-black text-red-600 uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                    Zona de Perigo
-                                </h3>
-                                <p className="text-xs font-bold text-red-600/60">Restaurar as configurações para o padrão de fábrica. Esta ação não pode ser desfeita.</p>
-                            </div>
-                            <button
-                                onClick={handleRestoreDefaults}
-                                className="px-6 py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
-                            >
-                                Restaurar Padrões
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            {/* Footer / Tip */}
-            {!editingSection && (
-                <div className="max-w-xl p-6 bg-brandDark/5 rounded-3xl border border-black/5">
-                    <p className="text-[10px] font-bold text-brandDark/60 leading-relaxed italic">
-                        <span className="text-brandDark font-black mr-2 uppercase tracking-tight">Dica:</span>
-                        Utilize a função de **Exportar JSON** para fazer backups periódicos da sua configuração antes de realizar grandes mudanças na identidade visual ou integrações.
-                    </p>
+            {/* Integrations Module */}
+            <div className="space-y-6 pt-4">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-brandDark/30">Módulo de Integrações</h2>
+                    <div className="h-px flex-1 bg-brandDark/5" />
                 </div>
-            )}
+
+                <AdminTable loading={saving && !editingSection}>
+                    <thead>
+                        <tr>
+                            <th>Integração</th>
+                            <th>Descrição</th>
+                            <th>Identificador</th>
+                            <th className="text-center">Status</th>
+                            <th className="text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[
+                            { id: 'googleAds' as const, name: 'Google Ads', desc: 'Busca e Display' },
+                            { id: 'metaAds' as const, name: 'Meta Ads', desc: 'Facebook e Instagram' },
+                            { id: 'ga4' as const, name: 'GA4 (Analytics)', desc: 'Eventos e Conversões' }
+                        ].map(it => {
+                            const status = config.integrations[it.id];
+                            return (
+                                <tr key={it.id} className="group hover:bg-[#F8F9FA] transition-colors">
+                                    <td>
+                                        <p className="font-black text-brandDark leading-tight">{it.name}</p>
+                                    </td>
+                                    <td>
+                                        <p className="text-[10px] font-bold text-brandDark/40 uppercase tracking-widest">{it.desc}</p>
+                                    </td>
+                                    <td>
+                                        <p className="text-xs font-bold text-brandDark/70 truncate max-w-[150px]">
+                                            {(status as any).accountLabel || (status as any).propertyLabel || '—'}
+                                        </p>
+                                    </td>
+                                    <td className="text-center">
+                                        <AdminStatusBadge status={status.connected ? 'active' : 'inactive'} />
+                                    </td>
+                                    <td className="text-right">
+                                        {status.connected ? (
+                                            <button
+                                                onClick={() => handleSimulateConnection(it.id, false)}
+                                                className="text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors"
+                                            >
+                                                Desconectar
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleSimulateConnection(it.id, true)}
+                                                className="bg-brandDark/5 px-4 py-2 rounded-lg text-brandDark font-black text-[10px] uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all"
+                                            >
+                                                Conectar
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </AdminTable>
+            </div>
+
+            {/* Section Editor Drawer */}
+            <AdminDrawer
+                isOpen={!!editingSection}
+                onClose={handleCancel}
+                title={`Editar ${getSectionTitle(editingSection)}`}
+                subtitle="Altere as informações abaixo e clique em salvar"
+                actions={
+                    <button
+                        onClick={() => handleSave()}
+                        disabled={saving}
+                        className="bg-brandDark text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-brandDark transition-all disabled:opacity-50"
+                    >
+                        {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
+                }
+            >
+                {editingSection && tempConfig && (
+                    <form onSubmit={handleSave} className="space-y-8">
+                        {editingSection === 'org' && (
+                            <div className="space-y-6">
+                                <Input label="Nome da Organização" value={tempConfig.orgName} onChange={val => setTempConfig({ ...tempConfig, orgName: val })} error={errors.orgName} />
+                                <Input label="Slug (Identificador)" value={tempConfig.orgSlug} onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} error={errors.orgSlug} helper="Apenas letras, números e hífens." />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <Select
+                                        label="Fuso Horário"
+                                        value={tempConfig.timezone}
+                                        onChange={val => setTempConfig({ ...tempConfig, timezone: val })}
+                                        options={[
+                                            { label: 'Brasília (GMT-3)', value: 'America/Sao_Paulo' },
+                                            { label: 'Amazonas (GMT-4)', value: 'America/Manaus' },
+                                            { label: 'F. Noronha (GMT-2)', value: 'America/Noronha' },
+                                            { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' }
+                                        ]}
+                                    />
+                                    <Input label="Moeda" value={tempConfig.currency} onChange={val => setTempConfig({ ...tempConfig, currency: val })} />
+                                </div>
+                            </div>
+                        )}
+
+                        {editingSection === 'brand' && (
+                            <div className="space-y-6">
+                                <div className="flex gap-4 items-end">
+                                    <div className="flex-1">
+                                        <Input label="Cor Principal (Hex)" value={tempConfig.brand.primaryColor || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })} placeholder="#00E08F" error={errors.primaryColor} />
+                                    </div>
+                                    <div className="w-12 h-12 rounded-xl mb-1 shadow-inner border border-black/5" style={{ backgroundColor: tempConfig.brand.primaryColor || '#eee' }} />
+                                </div>
+                                <Input label="Link do Logo" value={tempConfig.brand.logoUrl || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })} placeholder="https://..." error={errors.logoUrl} />
+                            </div>
+                        )}
+
+                        {editingSection === 'contact' && (
+                            <div className="space-y-6">
+                                <Input label="E-mail Administrativo" value={tempConfig.contact.email || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })} placeholder="contato@empresa.com" error={errors.email} />
+                                <Input label="WhatsApp de Suporte" value={tempConfig.contact.whatsapp || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val } })} placeholder="+55..." />
+                            </div>
+                        )}
+
+                        {editingSection === 'links' && (
+                            <div className="space-y-6">
+                                <Input label="Website Oficial" value={tempConfig.links.website || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })} placeholder="https://..." error={errors.website} />
+                                <Input label="Política de Privacidade" value={tempConfig.links.privacyPolicy || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })} placeholder="https://..." error={errors.privacyPolicy} />
+                            </div>
+                        )}
+
+                        <div className="pt-10">
+                            <p className="text-[10px] font-bold text-brandDark/20 uppercase text-center">ADS CONNECT v1.0 • Configurações Locais</p>
+                        </div>
+                    </form>
+                )}
+            </AdminDrawer>
         </div>
     );
+};
+
+const getSectionTitle = (section: ConfigSection | null): string => {
+    switch (section) {
+        case 'org': return 'Organização';
+        case 'brand': return 'Identidade Visual';
+        case 'contact': return 'Contato';
+        case 'links': return 'Links Estratégicos';
+        default: return '';
+    }
 };
 
 const SectionCard: React.FC<{
     title: string,
     color: string,
-    isEditing: boolean,
     onEdit: () => void,
-    onCancel: () => void,
-    onSave: () => void,
-    loading: boolean,
     children: React.ReactNode,
-    className?: string
-}> = ({ title, color, isEditing, onEdit, onCancel, onSave, loading, children, className }) => (
-    <div className={`admin-card p-8 flex flex-col min-h-[250px] transition-all ${isEditing ? 'ring-2 ring-primary/20 shadow-xl' : ''} ${className}`}>
+}> = ({ title, color, onEdit, children }) => (
+    <div className="admin-card p-8 flex flex-col hover:translate-y-0 shadow-sm border-brandDark/5">
         <div className="flex justify-between items-start mb-8">
-            <h3 className="text-sm font-black text-brandDark uppercase tracking-[0.2em] flex items-center gap-2">
-                <div className={`w-1.5 h-4 bg-${color} rounded-full`} />
+            <h3 className="text-[10px] font-black text-brandDark uppercase tracking-[0.2em] flex items-center gap-2">
+                <div className={`w-1.5 h-4 ${color} rounded-full`} />
                 {title}
             </h3>
-            {!isEditing ? (
-                <button onClick={onEdit} className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-brandDark transition-colors px-3 py-1 bg-primary/10 rounded-lg outline-none">
-                    Editar
-                </button>
-            ) : (
-                <div className="flex gap-2">
-                    <button onClick={onCancel} disabled={loading} className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 hover:text-brandDark transition-colors px-3 py-1 bg-black/5 rounded-lg">
-                        Cancelar
-                    </button>
-                    <button onClick={onSave} disabled={loading} className="text-[10px] font-black uppercase tracking-widest text-white px-3 py-1 bg-brandDark rounded-lg hover:bg-black transition-all">
-                        {loading ? '...' : 'Salvar'}
-                    </button>
-                </div>
-            )}
+            <button onClick={onEdit} className="text-[9px] font-black uppercase tracking-widest text-brandDark/30 hover:text-brandDark transition-colors px-3 py-1.5 bg-brandDark/5 rounded-lg active:scale-95">
+                Editar
+            </button>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 space-y-4">
             {children}
         </div>
     </div>
 );
 
-const IntegrationCard: React.FC<{
-    name: string,
-    description: string,
-    status: { connected: boolean, connectedAt?: string, accountLabel?: string, propertyLabel?: string },
-    onConnect: () => void,
-    onDisconnect: () => void,
-    loading: boolean
-}> = ({ name, description, status, onConnect, onDisconnect, loading }) => (
-    <div className={`admin-card p-6 flex flex-col border-t-4 ${status.connected ? 'border-primary' : 'border-brandDark/10'} transition-all hover:translate-y-[-4px]`}>
-        <div className="flex justify-between items-center mb-4">
-            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${status.connected ? 'bg-primary/10 text-primary' : 'bg-black/5 text-brandDark/30'}`}>
-                {status.connected ? 'Conectado' : 'Descon.'}
-            </span>
-            {status.connected && (
-                <button onClick={onDisconnect} disabled={loading} className="text-[9px] font-bold text-red-500 hover:underline outline-none">Desconectar</button>
-            )}
-        </div>
-
-        <h4 className="text-base font-black text-brandDark mb-1">{name}</h4>
-        <p className="text-xs font-bold text-brandDark/40 mb-6 leading-tight">{description}</p>
-
-        <div className="mt-auto space-y-4">
-            {status.connected ? (
-                <div className="p-3 bg-brandDark/5 rounded-xl space-y-2">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-brandDark/30 uppercase tracking-widest">Identificador</span>
-                        <span className="text-[10px] font-bold text-brandDark/70 truncate">{status.accountLabel || status.propertyLabel}</span>
-                    </div>
-                </div>
-            ) : (
-                <button onClick={onConnect} disabled={loading} className="w-full py-3 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all outline-none">
-                    Conectar Conta
-                </button>
-            )}
-        </div>
-    </div>
-);
-
 const InfoRow: React.FC<{ label: string, value: string, isLink?: boolean }> = ({ label, value, isLink }) => (
-    <div className="flex flex-col gap-1 border-b border-black/5 pb-2 last:border-0 last:pb-0">
-        <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">{label}</span>
+    <div className="flex flex-col gap-1 border-b border-brandDark/5 pb-2 last:border-0 last:pb-0">
+        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-brandDark/30">{label}</span>
         {isLink && value !== "N/A" && value !== "Não configurado" ? (
             <a href={value} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline transition-all">
                 {value}
@@ -548,7 +491,7 @@ const Input: React.FC<{ label: string, value: string, onChange: (val: string) =>
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className={`w-full bg-[#F8F9FA] border ${error ? 'border-red-500' : 'border-black/5'} rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 ${error ? 'focus:ring-red-100' : 'focus:ring-primary/20'} outline-none transition-all placeholder:text-brandDark/20`}
+            className={`w-full bg-[#F8F9FA] border-0 rounded-xl px-4 py-4 text-sm font-bold text-brandDark focus:ring-2 ${error ? 'focus:ring-red-500/20' : 'focus:ring-primary/20'} outline-none transition-all placeholder:text-brandDark/20`}
         />
         {error ? <span className="text-[9px] font-bold text-red-500 pl-1">{error}</span> : helper && <span className="text-[9px] font-bold text-brandDark/20 pl-1">{helper}</span>}
     </div>
@@ -557,7 +500,7 @@ const Input: React.FC<{ label: string, value: string, onChange: (val: string) =>
 const Select: React.FC<{ label: string, value: string, onChange: (val: string) => void, options: { label: string, value: string }[] }> = ({ label, value, onChange, options }) => (
     <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 pl-1">{label}</label>
-        <select value={value} onChange={e => onChange(e.target.value)} className="w-full bg-[#F8F9FA] border border-black/5 rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
+        <select value={value} onChange={e => onChange(e.target.value)} className="w-full bg-[#F8F9FA] border-0 rounded-xl px-4 py-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
             {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
     </div>
