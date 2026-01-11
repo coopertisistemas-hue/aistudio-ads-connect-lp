@@ -19,8 +19,18 @@ export const DEFAULT_CONFIG: OrgConfig = {
         privacyPolicy: "https://adsconnect.com.br/privacidade"
     },
     integrations: {
-        googleAdsConnected: true,
-        metaConnected: false,
-        ga4Connected: true
+        googleAds: {
+            connected: true,
+            connectedAt: new Date().toISOString(),
+            accountLabel: "Google Ads (simulado)"
+        },
+        metaAds: {
+            connected: false
+        },
+        ga4: {
+            connected: true,
+            connectedAt: new Date().toISOString(),
+            propertyLabel: "GA4 (simulado)"
+        }
     }
 };

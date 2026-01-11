@@ -3,7 +3,7 @@ import { configService } from '../../admin/services/configService';
 import { OrgConfig } from '../../admin/types/Config';
 import { toast } from 'sonner';
 
-type ConfigSection = 'org' | 'brand' | 'contact' | 'links';
+type ConfigSection = 'org' | 'brand' | 'contact' | 'links' | 'integrations';
 
 interface ValidationErrors {
     [key: string]: string;
@@ -57,7 +57,6 @@ const AdminConfigPage: React.FC = () => {
 
     const hasChanges = (section: ConfigSection) => {
         if (!config || !tempConfig) return false;
-        // Simple but effective check for these specific keys
         if (section === 'org') {
             return config.orgName !== tempConfig.orgName ||
                 config.orgSlug !== tempConfig.orgSlug ||
@@ -126,7 +125,7 @@ const AdminConfigPage: React.FC = () => {
                     timezone: tempConfig!.timezone,
                     currency: tempConfig!.currency
                 }
-                : { [section]: tempConfig![section] };
+                : { [section]: tempConfig![section as keyof OrgConfig] };
 
             const updated = await configService.updateConfig(dataToUpdate as Partial<OrgConfig>);
             setConfig(updated);
@@ -136,6 +135,38 @@ const AdminConfigPage: React.FC = () => {
         } catch (error) {
             console.error('Save error:', error);
             toast.error('Erro ao salvar configurações.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSimulateConnection = async (type: 'googleAds' | 'metaAds' | 'ga4', connect: boolean) => {
+        if (!config) return;
+
+        if (connect) {
+            if (!window.confirm(`Simular conexão com ${type === 'ga4' ? 'GA4' : 'Ads'}? Esta é uma integração de demonstração.`)) return;
+        } else {
+            if (!window.confirm(`Desconectar ${type}?`)) return;
+        }
+
+        setSaving(true);
+        try {
+            const label = type === 'googleAds' ? 'Google Ads (simulado)' : type === 'metaAds' ? 'Meta Ads (simulado)' : 'GA4 (simulado)';
+            const labelKey = type === 'ga4' ? 'propertyLabel' : 'accountLabel';
+
+            const updatedIntegrations = {
+                ...config.integrations,
+                [type]: connect
+                    ? { connected: true, connectedAt: new Date().toISOString(), [labelKey]: label }
+                    : { connected: false }
+            };
+
+            const updated = await configService.updateConfig({ integrations: updatedIntegrations });
+            setConfig(updated);
+            setTempConfig(updated);
+            toast.success(connect ? `Conectado ao ${type} com sucesso!` : `Desconectado do ${type}.`);
+        } catch (error) {
+            toast.error('Erro ao processar integração.');
         } finally {
             setSaving(false);
         }
@@ -170,7 +201,6 @@ const AdminConfigPage: React.FC = () => {
                 {/* Organization Card */}
                 <SectionCard
                     title="Organização"
-                    icon="org"
                     color="primary"
                     isEditing={editingSection === 'org'}
                     onEdit={() => handleStartEdit('org')}
@@ -180,19 +210,8 @@ const AdminConfigPage: React.FC = () => {
                 >
                     {editingSection === 'org' ? (
                         <div className="space-y-4">
-                            <Input
-                                label="Nome da Organização"
-                                value={tempConfig.orgName}
-                                onChange={val => setTempConfig({ ...tempConfig, orgName: val })}
-                                error={errors.orgName}
-                            />
-                            <Input
-                                label="Slug (Identificador)"
-                                value={tempConfig.orgSlug}
-                                onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-                                error={errors.orgSlug}
-                                helper="Apenas letras, números e hífens."
-                            />
+                            <Input label="Nome da Organização" value={tempConfig.orgName} onChange={val => setTempConfig({ ...tempConfig, orgName: val })} error={errors.orgName} />
+                            <Input label="Slug (Identificador)" value={tempConfig.orgSlug} onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} error={errors.orgSlug} helper="Apenas letras, números e hífens." />
                             <div className="grid grid-cols-2 gap-4">
                                 <Select
                                     label="Fuso Horário"
@@ -202,16 +221,10 @@ const AdminConfigPage: React.FC = () => {
                                         { label: 'Brasília (GMT-3)', value: 'America/Sao_Paulo' },
                                         { label: 'Amazonas (GMT-4)', value: 'America/Manaus' },
                                         { label: 'Fernando de Noronha (GMT-2)', value: 'America/Noronha' },
-                                        { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' },
-                                        { label: 'Londres (GMT+0)', value: 'Europe/London' },
-                                        { label: 'Nova York (GMT-5)', value: 'America/New_York' }
+                                        { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' }
                                     ]}
                                 />
-                                <Input
-                                    label="Moeda"
-                                    value={tempConfig.currency}
-                                    onChange={val => setTempConfig({ ...tempConfig, currency: val })}
-                                />
+                                <Input label="Moeda" value={tempConfig.currency} onChange={val => setTempConfig({ ...tempConfig, currency: val })} />
                             </div>
                         </div>
                     ) : (
@@ -229,7 +242,6 @@ const AdminConfigPage: React.FC = () => {
                 {/* Branding Card */}
                 <SectionCard
                     title="Identidade Visual"
-                    icon="brand"
                     color="blue-500"
                     isEditing={editingSection === 'brand'}
                     onEdit={() => handleStartEdit('brand')}
@@ -241,23 +253,11 @@ const AdminConfigPage: React.FC = () => {
                         <div className="space-y-4">
                             <div className="flex gap-4 items-end">
                                 <div className="flex-1">
-                                    <Input
-                                        label="Cor Principal (Hex)"
-                                        value={tempConfig.brand.primaryColor || ''}
-                                        onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })}
-                                        placeholder="#00E08F"
-                                        error={errors.primaryColor}
-                                    />
+                                    <Input label="Cor Principal (Hex)" value={tempConfig.brand.primaryColor || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })} placeholder="#00E08F" error={errors.primaryColor} />
                                 </div>
                                 <div className="w-10 h-10 rounded-xl mb-1 shadow-inner border border-black/5" style={{ backgroundColor: tempConfig.brand.primaryColor || '#eee' }} />
                             </div>
-                            <Input
-                                label="Link do Logo (SVG/PNG)"
-                                value={tempConfig.brand.logoUrl || ''}
-                                onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })}
-                                placeholder="https://..."
-                                error={errors.logoUrl}
-                            />
+                            <Input label="Link do Logo (SVG/PNG)" value={tempConfig.brand.logoUrl || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })} placeholder="https://..." error={errors.logoUrl} />
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -276,7 +276,6 @@ const AdminConfigPage: React.FC = () => {
                 {/* Contact Card */}
                 <SectionCard
                     title="Contato & Suporte"
-                    icon="contact"
                     color="purple-500"
                     isEditing={editingSection === 'contact'}
                     onEdit={() => handleStartEdit('contact')}
@@ -286,20 +285,8 @@ const AdminConfigPage: React.FC = () => {
                 >
                     {editingSection === 'contact' ? (
                         <div className="space-y-4">
-                            <Input
-                                label="E-mail Administrativo"
-                                value={tempConfig.contact.email || ''}
-                                onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })}
-                                placeholder="contato@empresa.com"
-                                error={errors.email}
-                            />
-                            <Input
-                                label="WhatsApp de Suporte"
-                                value={tempConfig.contact.whatsapp || ''}
-                                onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val.replace(/[^0-9+]/g, '') } })}
-                                placeholder="+5511999999999"
-                                helper="Apenas números e +"
-                            />
+                            <Input label="E-mail Administrativo" value={tempConfig.contact.email || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })} placeholder="contato@empresa.com" error={errors.email} />
+                            <Input label="WhatsApp de Suporte" value={tempConfig.contact.whatsapp || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val.replace(/[^0-9+]/g, '') } })} placeholder="+55..." />
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -309,73 +296,79 @@ const AdminConfigPage: React.FC = () => {
                     )}
                 </SectionCard>
 
-                {/* Integrations Card */}
-                <div className="admin-card p-8 bg-brandDark border-brandDark/10 flex flex-col">
-                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                        <div className="w-1.5 h-4 bg-primary rounded-full" />
-                        Conexões & Integrações
-                    </h3>
-                    <div className="space-y-4 flex-1">
-                        <IntegrationStatus label="Google Ads" isConnected={config.integrations.googleAdsConnected} />
-                        <IntegrationStatus label="Meta Ads (Facebook/IG)" isConnected={config.integrations.metaConnected} />
-                        <IntegrationStatus label="Google Analytics (GA4)" isConnected={config.integrations.ga4Connected} />
-                    </div>
-                </div>
-
                 {/* Links Card */}
                 <SectionCard
                     title="Links Estratégicos"
-                    icon="links"
                     color="amber-500"
                     isEditing={editingSection === 'links'}
                     onEdit={() => handleStartEdit('links')}
                     onCancel={handleCancel}
                     onSave={() => handleSave('links')}
                     loading={saving}
-                    className="md:col-span-2"
                 >
                     {editingSection === 'links' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Input
-                                label="Website Oficial"
-                                value={tempConfig.links.website || ''}
-                                onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })}
-                                placeholder="https://..."
-                                error={errors.website}
-                            />
-                            <Input
-                                label="Política de Privacidade"
-                                value={tempConfig.links.privacyPolicy || ''}
-                                onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })}
-                                placeholder="https://..."
-                                error={errors.privacyPolicy}
-                            />
+                        <div className="space-y-4">
+                            <Input label="Website Oficial" value={tempConfig.links.website || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })} placeholder="https://..." error={errors.website} />
+                            <Input label="Política de Privacidade" value={tempConfig.links.privacyPolicy || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })} placeholder="https://..." error={errors.privacyPolicy} />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
                             <InfoRow label="Website Oficial" value={config.links.website || "N/A"} isLink />
                             <InfoRow label="Política de Privacidade" value={config.links.privacyPolicy || "N/A"} isLink />
                         </div>
                     )}
                 </SectionCard>
+
+                {/* Integrations Module - Sprint 3 */}
+                <div className="md:col-span-2 space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className="h-0.5 flex-1 bg-black/5" />
+                        <h2 className="text-xs font-black uppercase tracking-[0.3em] text-brandDark/30">Módulo de Integrações</h2>
+                        <div className="h-0.5 flex-1 bg-black/5" />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <IntegrationCard
+                            name="Google Ads"
+                            description="Sincronize campanhas de busca e display."
+                            status={config.integrations.googleAds}
+                            onConnect={() => handleSimulateConnection('googleAds', true)}
+                            onDisconnect={() => handleSimulateConnection('googleAds', false)}
+                            loading={saving}
+                        />
+                        <IntegrationCard
+                            name="Meta Ads"
+                            description="Conecte Facebook e Instagram Ads."
+                            status={config.integrations.metaAds}
+                            onConnect={() => handleSimulateConnection('metaAds', true)}
+                            onDisconnect={() => handleSimulateConnection('metaAds', false)}
+                            loading={saving}
+                        />
+                        <IntegrationCard
+                            name="GA4 (Analytics)"
+                            description="Acompanhe eventos e conversões."
+                            status={config.integrations.ga4}
+                            onConnect={() => handleSimulateConnection('ga4', true)}
+                            onDisconnect={() => handleSimulateConnection('ga4', false)}
+                            loading={saving}
+                        />
+                    </div>
+                </div>
             </div>
 
-            {/* Footer Message */}
-            {!editingSection && (
-                <div className="max-w-xl p-6 bg-primary/5 rounded-3xl border border-primary/10">
-                    <p className="text-xs font-bold text-brandDark/60 leading-relaxed italic">
-                        <span className="text-primary font-black mr-2">DIICA:</span>
-                        As alterações feitas nestes campos refletirão automaticamente no cabeçalho, rodapé e scripts de conversão das suas LPs.
-                    </p>
-                </div>
-            )}
+            {/* Disclaimer */}
+            <div className="max-w-xl p-6 bg-brandDark/5 rounded-3xl border border-black/5">
+                <p className="text-[10px] font-bold text-brandDark/40 leading-relaxed italic">
+                    <span className="text-brandDark font-black mr-2 uppercase">Aviso:</span>
+                    As conexões acima são placeholders simulados para validação de interface e fluxos de dados. A integração real via OAuth 2.0 será implementada na Fase 2 do projeto.
+                </p>
+            </div>
         </div>
     );
 };
 
 const SectionCard: React.FC<{
     title: string,
-    icon: string,
     color: string,
     isEditing: boolean,
     onEdit: () => void,
@@ -400,25 +393,63 @@ const SectionCard: React.FC<{
                 </button>
             ) : (
                 <div className="flex gap-2">
-                    <button
-                        onClick={onCancel}
-                        disabled={loading}
-                        className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 hover:text-brandDark transition-colors px-3 py-1 bg-black/5 rounded-lg"
-                    >
+                    <button onClick={onCancel} disabled={loading} className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 hover:text-brandDark transition-colors px-3 py-1 bg-black/5 rounded-lg">
                         Cancelar
                     </button>
-                    <button
-                        onClick={onSave}
-                        disabled={loading}
-                        className="text-[10px] font-black uppercase tracking-widest text-white px-3 py-1 bg-brandDark rounded-lg hover:bg-black transition-all flex items-center gap-2"
-                    >
-                        {loading ? 'Salvando...' : 'Salvar'}
+                    <button onClick={onSave} disabled={loading} className="text-[10px] font-black uppercase tracking-widest text-white px-3 py-1 bg-brandDark rounded-lg hover:bg-black transition-all">
+                        {loading ? '...' : 'Salvar'}
                     </button>
                 </div>
             )}
         </div>
         <div className="flex-1">
             {children}
+        </div>
+    </div>
+);
+
+const IntegrationCard: React.FC<{
+    name: string,
+    description: string,
+    status: { connected: boolean, connectedAt?: string, accountLabel?: string, propertyLabel?: string },
+    onConnect: () => void,
+    onDisconnect: () => void,
+    loading: boolean
+}> = ({ name, description, status, onConnect, onDisconnect, loading }) => (
+    <div className={`admin-card p-6 flex flex-col border-t-4 ${status.connected ? 'border-primary' : 'border-brandDark/10'} transition-all hover:translate-y-[-4px]`}>
+        <div className="flex justify-between items-center mb-4">
+            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${status.connected ? 'bg-primary/10 text-primary' : 'bg-black/5 text-brandDark/30'}`}>
+                {status.connected ? 'Conectado' : 'Desconectado'}
+            </span>
+            {status.connected && (
+                <button onClick={onDisconnect} disabled={loading} className="text-[9px] font-bold text-red-500 hover:underline">Desconectar</button>
+            )}
+        </div>
+
+        <h4 className="text-base font-black text-brandDark mb-1">{name}</h4>
+        <p className="text-xs font-bold text-brandDark/40 mb-6 leading-tight">{description}</p>
+
+        <div className="mt-auto space-y-4">
+            {status.connected ? (
+                <div className="p-3 bg-brandDark/5 rounded-xl space-y-2">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-brandDark/30 uppercase tracking-widest">Identificador</span>
+                        <span className="text-[10px] font-bold text-brandDark/70">{status.accountLabel || status.propertyLabel}</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-brandDark/30 uppercase tracking-widest">Conectado em</span>
+                        <span className="text-[10px] font-bold text-brandDark/70">{status.connectedAt ? new Date(status.connectedAt).toLocaleDateString('pt-BR') : '-'}</span>
+                    </div>
+                </div>
+            ) : (
+                <button
+                    onClick={onConnect}
+                    disabled={loading}
+                    className="w-full py-3 bg-brandDark text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                >
+                    Conectar Conta
+                </button>
+            )}
         </div>
     </div>
 );
@@ -436,14 +467,7 @@ const InfoRow: React.FC<{ label: string, value: string, isLink?: boolean }> = ({
     </div>
 );
 
-const Input: React.FC<{
-    label: string,
-    value: string,
-    onChange: (val: string) => void,
-    placeholder?: string,
-    error?: string,
-    helper?: string
-}> = ({ label, value, onChange, placeholder, error, helper }) => (
+const Input: React.FC<{ label: string, value: string, onChange: (val: string) => void, placeholder?: string, error?: string, helper?: string }> = ({ label, value, onChange, placeholder, error, helper }) => (
     <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 pl-1">{label}</label>
         <input
@@ -453,36 +477,16 @@ const Input: React.FC<{
             placeholder={placeholder}
             className={`w-full bg-[#F8F9FA] border ${error ? 'border-red-500' : 'border-black/5'} rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 ${error ? 'focus:ring-red-100' : 'focus:ring-primary/20'} outline-none transition-all placeholder:text-brandDark/20`}
         />
-        {error ? (
-            <span className="text-[9px] font-bold text-red-500 pl-1">{error}</span>
-        ) : helper ? (
-            <span className="text-[9px] font-bold text-brandDark/20 pl-1">{helper}</span>
-        ) : null}
+        {error ? <span className="text-[9px] font-bold text-red-500 pl-1">{error}</span> : helper && <span className="text-[9px] font-bold text-brandDark/20 pl-1">{helper}</span>}
     </div>
 );
 
 const Select: React.FC<{ label: string, value: string, onChange: (val: string) => void, options: { label: string, value: string }[] }> = ({ label, value, onChange, options }) => (
     <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 pl-1">{label}</label>
-        <select
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            className="w-full bg-[#F8F9FA] border border-black/5 rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer"
-        >
-            {options.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+        <select value={value} onChange={e => onChange(e.target.value)} className="w-full bg-[#F8F9FA] border border-black/5 rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
+            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
-    </div>
-);
-
-const IntegrationStatus: React.FC<{ label: string, isConnected: boolean }> = ({ label, isConnected }) => (
-    <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-        <span className="text-xs font-bold text-white/80">{label}</span>
-        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${isConnected ? 'bg-primary/20 text-primary' : 'bg-red-500/20 text-red-500'}`}>
-            <span className={`w-1 h-1 rounded-full ${isConnected ? 'bg-primary animate-pulse' : 'bg-red-500'}`} />
-            {isConnected ? 'Conectado' : 'Desconectado'}
-        </div>
     </div>
 );
 

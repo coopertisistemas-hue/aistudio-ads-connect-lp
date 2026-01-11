@@ -17,8 +17,20 @@ export interface OrgConfig {
         privacyPolicy?: string;
     };
     integrations: {
-        googleAdsConnected: boolean;
-        metaConnected: boolean;
-        ga4Connected: boolean;
+        googleAds: {
+            connected: boolean;
+            connectedAt?: string;
+            accountLabel?: string;
+        };
+        metaAds: {
+            connected: boolean;
+            connectedAt?: string;
+            accountLabel?: string;
+        };
+        ga4: {
+            connected: boolean;
+            connectedAt?: string;
+            propertyLabel?: string;
+        };
     };
 }

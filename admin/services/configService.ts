@@ -11,7 +11,22 @@ export const configService = {
                 this.saveConfig(DEFAULT_CONFIG);
                 return DEFAULT_CONFIG;
             }
-            return JSON.parse(stored);
+            const config = JSON.parse(stored);
+
+            // Migration / Normalization Layer (Sprint 3)
+            // If we find the old flat boolean structure, convert it to the new object structure
+            if (config.integrations && ('googleAdsConnected' in config.integrations)) {
+                console.log('Migrating integrations to new structure...');
+                const old = config.integrations as any;
+                config.integrations = {
+                    googleAds: { connected: !!old.googleAdsConnected },
+                    metaAds: { connected: !!old.metaConnected },
+                    ga4: { connected: !!old.ga4Connected }
+                };
+                this.saveConfig(config);
+            }
+
+            return config;
         } catch (error) {
             console.error('Failed to parse config, resetting to default:', error);
             this.saveConfig(DEFAULT_CONFIG);
@@ -49,7 +64,19 @@ export const configService = {
             },
             integrations: {
                 ...(current.integrations || {}),
-                ...(changes.integrations || {})
+                // Sprint 3: Deep merge even for the 3rd level
+                googleAds: {
+                    ...(current.integrations?.googleAds || {}),
+                    ...(changes.integrations?.googleAds || {})
+                },
+                metaAds: {
+                    ...(current.integrations?.metaAds || {}),
+                    ...(changes.integrations?.metaAds || {})
+                },
+                ga4: {
+                    ...(current.integrations?.ga4 || {}),
+                    ...(changes.integrations?.ga4 || {})
+                }
             }
         };
 
