@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Users } from 'lucide-react';
 import { Lead, LeadStatus, LeadSource, LeadFilters } from '../../admin/types/Lead';
 import { leadsService } from '../../admin/services/leadsService';
 import { trackEvent } from '../../lib/tracking';
@@ -184,9 +185,14 @@ const AdminLeadsPage: React.FC = () => {
                         <tr>
                             <td colSpan={5}>
                                 <AdminEmptyState
-                                    title="Nenhum lead encontrado."
-                                    description="Tente ajustar os filtros ou cadastrar um novo lead para começar."
-                                    onClearFilters={filters.q || filters.status || filters.source ? () => {
+                                    title="Nenhum lead encontrado"
+                                    description="Você ainda não tem leads cadastrados ou os filtros aplicados não retornaram resultados."
+                                    icon={Users}
+                                    action={{
+                                        label: "Novo Lead",
+                                        onClick: () => setIsModalOpen(true)
+                                    }}
+                                    onClearFilters={(filters.q || filters.status || filters.source) ? () => {
                                         setSearchParams(new URLSearchParams());
                                     } : undefined}
                                 />

@@ -18,6 +18,7 @@ const AdminLayout: React.FC = () => {
         {
             title: 'Operação',
             items: [
+                { label: 'Dashboard', path: ROUTES.ADMIN_DASHBOARD },
                 { label: 'Leads', path: ROUTES.ADMIN_LEADS },
                 { label: 'Sites', path: ROUTES.ADMIN_SITES },
                 { label: 'Anúncios', path: ROUTES.ADMIN_ADS },

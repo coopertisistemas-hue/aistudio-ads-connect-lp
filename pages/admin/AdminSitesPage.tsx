@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Globe } from 'lucide-react';
 import { Site, SiteStatus, PaginatedSites } from '../../admin/types/Site';
 import { sitesService } from '../../admin/services/sitesService';
 import { trackEvent } from '../../lib/tracking';
@@ -151,7 +152,12 @@ const AdminSitesPage: React.FC = () => {
                             <td colSpan={5}>
                                 <AdminEmptyState
                                     title="Nenhum site encontrado"
-                                    description="Tente ajustar os filtros ou crie um novo site."
+                                    description="Você ainda não tem sites criados ou os filtros aplicados não retornaram resultados."
+                                    icon={Globe}
+                                    action={{
+                                        label: "Novo Site",
+                                        onClick: () => setIsCreateModalOpen(true)
+                                    }}
                                     onClearFilters={search || status || segment || city ? () => {
                                         setSearch('');
                                         setStatus('');

@@ -3,6 +3,7 @@ export const ROUTES = {
     LP: "/lp",
     LOGIN: "/login",
     ADMIN: "/admin",
+    ADMIN_DASHBOARD: "/admin/dashboard",
     ADMIN_LEADS: "/admin/leads",
     ADMIN_SITES: "/admin/sites",
     ADMIN_ADS: "/admin/anuncios",

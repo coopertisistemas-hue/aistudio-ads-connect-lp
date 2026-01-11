@@ -8,6 +8,7 @@ import AdminSitesPage from './pages/admin/AdminSitesPage';
 import AdminAdsPage from './pages/admin/AdminAdsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminConfigPage from './pages/admin/AdminConfigPage';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminInsightsPage from './pages/admin/AdminInsightsPage';
 import AdminPlanosPage from './pages/admin/AdminPlanosPage';
 import AdminAssinaturasPage from './pages/admin/AdminAssinaturasPage';
@@ -43,7 +44,8 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to={ROUTES.ADMIN_LEADS} replace />} />
+          <Route index element={<Navigate to={ROUTES.ADMIN_DASHBOARD} replace />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="leads" element={<AdminLeadsPage />} />
           <Route path="sites" element={<AdminSitesPage />} />
           <Route path="anuncios" element={<AdminAdsPage />} />

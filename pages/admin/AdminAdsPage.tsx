@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Megaphone } from 'lucide-react';
 import { Ad, AdStatus, AdChannel, AdObjective } from '../../admin/types/Ad';
 import { adsService } from '../../admin/services/adsService';
 import { trackEvent } from '../../lib/tracking';
@@ -164,7 +165,12 @@ const AdminAdsPage: React.FC = () => {
                             <td colSpan={5}>
                                 <AdminEmptyState
                                     title="Nenhum anúncio encontrado"
-                                    description="Ajuste os filtros ou crie uma nova campanha."
+                                    description="Você ainda não tem campanhas criadas ou os filtros aplicados não retornaram resultados."
+                                    icon={Megaphone}
+                                    action={{
+                                        label: "Novo Anúncio",
+                                        onClick: () => setIsCreateModalOpen(true)
+                                    }}
                                     onClearFilters={search || status || channel ? () => {
                                         setSearch('');
                                         setStatus('');
