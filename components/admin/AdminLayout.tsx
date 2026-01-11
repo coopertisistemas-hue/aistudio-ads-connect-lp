@@ -15,12 +15,11 @@ const AdminLayout: React.FC = () => {
     };
 
     const menuItems = [
-        { label: 'Visão Geral', path: ROUTES.ADMIN, end: true },
-        { label: 'Leads', path: ROUTES.ADMIN_LEADS },
-        { label: 'Sites & Presença', path: ROUTES.ADMIN_SITES },
-        { label: 'Anúncios', path: ROUTES.ADMIN_ADS },
-        { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS },
-        { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS },
+        { label: 'Leads', path: ROUTES.ADMIN_LEADS, end: false },
+        { label: 'Sites', path: ROUTES.ADMIN_SITES, end: false },
+        { label: 'Ads', path: ROUTES.ADMIN_ADS, end: false },
+        { label: 'Reports', path: ROUTES.ADMIN_REPORTS, end: false },
+        { label: 'Config', path: ROUTES.ADMIN_SETTINGS, end: false },
     ];
 
     const getPageTitle = () => {

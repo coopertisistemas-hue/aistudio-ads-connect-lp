@@ -4,7 +4,6 @@ import { Lead, LeadStatus, LeadSource, LeadFilters } from '../../admin/types/Lea
 import { leadsService } from '../../admin/services/leadsService';
 import { trackEvent } from '../../lib/tracking';
 import { buildWhatsAppLink } from '../../lib/urls';
-import { CONTACT } from '../../config/constants';
 
 const AdminLeadsPage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -12,6 +11,31 @@ const AdminLeadsPage: React.FC = () => {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newLead, setNewLead] = useState({ name: '', company: '', email: '', phone: '', source: LeadSource.WHATSAPP });
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    // Keyboard Accessibility & Scroll Lock
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setIsModalOpen(false);
+                setSelectedLead(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
+        if (isModalOpen || selectedLead) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = '';
+        };
+    }, [isModalOpen, selectedLead]);
 
     // Sync state from query params
     const filters: LeadFilters = {
@@ -43,12 +67,56 @@ const AdminLeadsPage: React.FC = () => {
         setSearchParams(fresh);
     };
 
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const handleCreateLead = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Validation: name + (email OR phone)
+        if (!newLead.name.trim() || (!newLead.email.trim() && !newLead.phone.trim())) {
+            showToast('Preencha o nome e ao menos um contato (e-mail ou telefone).', 'error');
+            return;
+        }
+
+        try {
+            await leadsService.createLead({
+                ...newLead,
+                status: LeadStatus.NEW
+            });
+            setIsModalOpen(false);
+            setNewLead({ name: '', company: '', email: '', phone: '', source: LeadSource.WHATSAPP });
+            loadLeads();
+            trackEvent('admin_lead_create');
+            showToast('Lead cadastrado com sucesso!');
+        } catch (error) {
+            showToast('Erro ao cadastrar lead.', 'error');
+        }
+    };
+
+    const handleDeleteLead = async (id: string) => {
+        if (window.confirm('Tem certeza que deseja excluir este lead?')) {
+            await leadsService.deleteLead(id);
+            if (selectedLead?.id === id) setSelectedLead(null);
+            loadLeads();
+            trackEvent('admin_lead_delete', { id });
+            showToast('Lead excluído com sucesso!');
+        }
+    };
+
     const handleStatusChange = async (id: string, status: LeadStatus) => {
-        await leadsService.updateLeadStatus(id, status);
-        trackEvent('admin_lead_status_change', { id, status });
-        loadLeads();
-        if (selectedLead?.id === id) {
-            setSelectedLead({ ...selectedLead, status });
+        try {
+            await leadsService.updateLead(id, { status });
+            trackEvent('admin_lead_status_change', { id, status });
+            loadLeads();
+            if (selectedLead?.id === id) {
+                setSelectedLead({ ...selectedLead, status });
+            }
+            showToast('Status atualizado!');
+        } catch (error) {
+            showToast('Erro ao atualizar status.', 'error');
         }
     };
 
@@ -59,20 +127,20 @@ const AdminLeadsPage: React.FC = () => {
 
     return (
         <div className="space-y-8 pb-20">
-            {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="kpi-card">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Novos Leads (7d)</p>
-                    <p className="text-3xl font-black text-brandDark">14</p>
+            {/* Header / Actions */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 w-full sm:w-auto">
+                    <div className="kpi-card">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Leads Totais</p>
+                        <p className="text-3xl font-black text-brandDark">{total}</p>
+                    </div>
                 </div>
-                <div className="kpi-card">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Contatos WhatsApp</p>
-                    <p className="text-3xl font-black text-brandDark">28</p>
-                </div>
-                <div className="kpi-card">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Conv. Estimada</p>
-                    <p className="text-3xl font-black text-primary">18.4%</p>
-                </div>
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-brandDark text-white px-8 py-4 rounded-2xl font-black hover:bg-primary hover:text-brandDark transition-all shadow-xl shadow-brandDark/10 active:scale-95"
+                >
+                    + Novo Lead
+                </button>
             </div>
 
             {/* Filter Bar */}
@@ -80,7 +148,7 @@ const AdminLeadsPage: React.FC = () => {
                 <div className="flex-1 min-w-[200px] relative">
                     <input
                         type="text"
-                        placeholder="Buscar nome, empresa..."
+                        placeholder="Buscar nome, empresa, e-mail ou telefone..."
                         value={filters.q}
                         onChange={(e) => handleFilterChange('q', e.target.value)}
                         className="w-full bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark placeholder:text-brandDark/20 focus:ring-2 focus:ring-primary/20 transition-all"
@@ -89,7 +157,7 @@ const AdminLeadsPage: React.FC = () => {
                 <select
                     value={filters.status || ''}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20"
+                    className="bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 cursor-pointer"
                 >
                     <option value="">Todos os Status</option>
                     <option value={LeadStatus.NEW}>Novo</option>
@@ -101,7 +169,7 @@ const AdminLeadsPage: React.FC = () => {
                 <select
                     value={filters.source || ''}
                     onChange={(e) => handleFilterChange('origem', e.target.value)}
-                    className="bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20"
+                    className="bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 cursor-pointer"
                 >
                     <option value="">Todas as Origens</option>
                     <option value={LeadSource.ADS_NETWORK}>Rede ADS</option>
@@ -120,8 +188,8 @@ const AdminLeadsPage: React.FC = () => {
                                 <th>Lead</th>
                                 <th>Contato</th>
                                 <th>Origem</th>
-                                <th>Status</th>
-                                <th>Ações</th>
+                                <th className="text-center">Status</th>
+                                <th className="text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className={loading ? 'opacity-50 pointer-events-none' : ''}>
@@ -138,17 +206,17 @@ const AdminLeadsPage: React.FC = () => {
                                     <td>
                                         <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/50">{lead.source}</span>
                                     </td>
-                                    <td>
+                                    <td className="text-center">
                                         <span className={`status-badge status-${lead.status}`}>
                                             {lead.status.replace('_', ' ')}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td className="text-right">
                                         <button
                                             onClick={() => openDrawer(lead)}
-                                            className="text-primary font-black text-[10px] uppercase tracking-widest hover:underline"
+                                            className="bg-brandDark/5 px-4 py-2 rounded-lg text-brandDark font-black text-[10px] uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all"
                                         >
-                                            Ver detalhes
+                                            Detalhes
                                         </button>
                                     </td>
                                 </tr>
@@ -165,7 +233,7 @@ const AdminLeadsPage: React.FC = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="p-6 border-t border-brandDark/5 flex justify-between items-center">
+                <div className="p-6 border-t border-brandDark/5 flex justify-between items-center bg-[#F8F9FA]/30">
                     <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/30">
                         Mostrando {data.length} de {total} leads
                     </p>
@@ -173,20 +241,94 @@ const AdminLeadsPage: React.FC = () => {
                         <button
                             disabled={filters.page === 1}
                             onClick={() => handleFilterChange('page', (filters.page! - 1).toString())}
-                            className="px-4 py-2 bg-[#F8F9FA] rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                            className="w-10 h-10 flex items-center justify-center bg-white border border-brandDark/5 rounded-xl text-brandDark font-black shadow-sm hover:shadow-md active:scale-95 disabled:opacity-30 transition-all"
                         >
-                            Anterior
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                         </button>
                         <button
                             disabled={filters.page! * filters.pageSize! >= total}
                             onClick={() => handleFilterChange('page', (filters.page! + 1).toString())}
-                            className="px-4 py-2 bg-[#F8F9FA] rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                            className="w-10 h-10 flex items-center justify-center bg-white border border-brandDark/5 rounded-xl text-brandDark font-black shadow-sm hover:shadow-md active:scale-95 disabled:opacity-30 transition-all"
                         >
-                            Próxima
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* New Lead Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+                    <div className="absolute inset-0 bg-brandDark/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}></div>
+                    <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl relative z-10 overflow-hidden animate-fadeIn">
+                        <div className="p-8 sm:p-12">
+                            <div className="flex justify-between items-center mb-10">
+                                <h3 className="text-3xl font-black text-brandDark">Cadastrar Lead</h3>
+                                <button onClick={() => setIsModalOpen(false)} className="admin-btn-icon">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
+                            <form onSubmit={handleCreateLead} className="space-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Nome Completo *</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            value={newLead.name}
+                                            onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Empresa</label>
+                                        <input
+                                            type="text"
+                                            value={newLead.company}
+                                            onChange={(e) => setNewLead({ ...newLead, company: e.target.value })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">E-mail</label>
+                                    <input
+                                        type="email"
+                                        value={newLead.email}
+                                        onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
+                                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">WhatsApp / Telefone</label>
+                                        <input
+                                            type="text"
+                                            value={newLead.phone}
+                                            onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Origem *</label>
+                                        <select
+                                            value={newLead.source}
+                                            onChange={(e) => setNewLead({ ...newLead, source: e.target.value as LeadSource })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        >
+                                            {Object.values(LeadSource).map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] font-bold text-brandDark/30 text-center">* Pelo menos um contato (e-mail ou telefone) é obrigatório.</p>
+                                <button type="submit" className="w-full bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10 mt-4">
+                                    Salvar Lead
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Lead Drawer */}
             <div
@@ -204,15 +346,24 @@ const AdminLeadsPage: React.FC = () => {
                                 <h2 className="text-3xl font-black text-brandDark">{selectedLead.name}</h2>
                                 <p className="text-lg font-bold text-brandDark/40 tracking-tight">{selectedLead.company}</p>
                             </div>
-                            <button
-                                onClick={() => setSelectedLead(null)}
-                                className="admin-btn-icon"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleDeleteLead(selectedLead.id)}
+                                    className="admin-btn-icon text-red-500 hover:bg-red-50"
+                                    title="Excluir Lead"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedLead(null)}
+                                    className="admin-btn-icon"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-8 flex-1 overflow-y-auto pr-2">
+                        <div className="space-y-8 flex-1 overflow-y-auto pr-2 scrollbar-hide">
                             <section>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/30 mb-4">Informações de Contato</p>
                                 <div className="grid grid-cols-2 gap-4">
@@ -233,7 +384,7 @@ const AdminLeadsPage: React.FC = () => {
                                     {[
                                         { label: 'Lead qualificado', date: 'Hoje, 10:45' },
                                         { label: 'Contato enviado via WhatsApp', date: 'Ontem, 09:20' },
-                                        { label: 'Lead criado via Rede ADS', date: 'Há 2 dias' },
+                                        { label: 'Lead criado via ' + selectedLead.source, date: new Date(selectedLead.createdAt).toLocaleDateString() },
                                     ].map((event, i) => (
                                         <div key={i} className="flex gap-4 items-start pb-4 border-b border-brandDark/5 last:border-0 last:pb-0">
                                             <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0"></div>
@@ -293,6 +444,13 @@ const AdminLeadsPage: React.FC = () => {
                     </div>
                 )}
             </div>
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 rounded-2xl font-black text-sm shadow-2xl animate-fadeIn ${toast.type === 'success' ? 'bg-brandDark text-primary' : 'bg-red-500 text-white'
+                    }`}>
+                    {toast.message}
+                </div>
+            )}
         </div>
     );
 };
