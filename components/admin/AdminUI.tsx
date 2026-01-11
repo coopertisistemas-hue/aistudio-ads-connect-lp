@@ -21,7 +21,7 @@ export const AdminTable: React.FC<{ children: React.ReactNode; loading?: boolean
 // --- FILTER BAR ---
 
 export const FilterBar: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="admin-card p-6 flex flex-wrap items-center gap-4 animate-fadeIn">
+    <div className="admin-card p-10 flex flex-wrap items-center gap-6 animate-fadeIn mb-8">
         {children}
     </div>
 );
@@ -112,16 +112,16 @@ export const AdminDrawer: React.FC<AdminDrawerProps> = ({ isOpen, onClose, title
 // --- KPI CARD ---
 
 export const KPICard: React.FC<{ label: string; value: string | number; subLabel?: string; icon?: React.ReactNode, variant?: 'default' | 'primary' }> = ({ label, value, subLabel, icon, variant = 'default' }) => (
-    <div className={`kpi-card ${variant === 'primary' ? 'bg-brandDark text-white' : ''}`}>
-        <p className={`text-[10px] font-black uppercase tracking-widest ${variant === 'primary' ? 'text-white/40' : 'text-brandDark/40'}`}>{label}</p>
+    <div className={`kpi-card group ${variant === 'primary' ? 'bg-brandDark text-white border-none shadow-2xl shadow-brandDark/20' : 'hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5'}`}>
+        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${variant === 'primary' ? 'text-white/40' : 'text-brandDark/30'}`}>{label}</p>
         <div className="flex items-end justify-between">
             <div>
-                <h4 className="text-3xl font-black">{value}</h4>
-                {subLabel && <p className={`text-[10px] font-bold ${variant === 'primary' ? 'text-white/20' : 'text-brandDark/20'}`}>{subLabel}</p>}
+                <h4 className="text-4xl font-black tracking-tighter leading-none">{value}</h4>
+                {subLabel && <p className={`text-[11px] font-bold mt-2 ${variant === 'primary' ? 'text-white/20' : 'text-brandDark/20'}`}>{subLabel}</p>}
             </div>
             {icon && (
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${variant === 'primary' ? 'bg-primary text-brandDark' : 'bg-[#F8F9FA] text-brandDark/20'}`}>
-                    {icon}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 ${variant === 'primary' ? 'bg-primary text-brandDark' : 'bg-[#F8F9FA] text-brandDark/20 group-hover:text-primary'}`}>
+                    {React.cloneElement(icon as React.ReactElement, { size: 28, strokeWidth: 1.5 })}
                 </div>
             )}
         </div>

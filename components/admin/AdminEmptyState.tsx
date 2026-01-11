@@ -25,21 +25,23 @@ const AdminEmptyState: React.FC<AdminEmptyStateProps> = ({
     onClearFilters
 }) => {
     return (
-        <div className="py-20 text-center flex flex-col items-center justify-center animate-fadeIn">
-            <div className="w-24 h-24 bg-brandDark/5 rounded-[2.5rem] flex items-center justify-center mb-8 border border-brandDark/[0.03]">
-                <Icon className="w-10 h-10 text-brandDark/20" strokeWidth={1.5} />
+        <div className="py-24 text-center flex flex-col items-center justify-center animate-fadeIn">
+            <div className="w-32 h-32 bg-brandDark/[0.03] rounded-[3rem] flex items-center justify-center mb-10 border border-brandDark/[0.02]">
+                <Icon className="w-14 h-14 text-brandDark/10" strokeWidth={1} />
             </div>
-            <div className="max-w-md space-y-4">
-                <h3 className="text-2xl font-black text-brandDark tracking-tight">{title}</h3>
-                <p className="text-base font-bold text-brandDark/30 leading-relaxed mx-auto max-w-[280px]">
-                    {description}
-                </p>
+            <div className="max-w-md space-y-6">
+                <div className="space-y-2">
+                    <h3 className="text-3xl font-black text-brandDark tracking-tighter">{title}</h3>
+                    <p className="text-lg font-bold text-brandDark/30 leading-relaxed mx-auto max-w-sm">
+                        {description}
+                    </p>
+                </div>
 
-                <div className="flex flex-col items-center gap-4 pt-6">
+                <div className="flex flex-col items-center gap-6 pt-10">
                     {action && (
                         <button
                             onClick={action.onClick}
-                            className="bg-brandDark text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-primary hover:text-brandDark transition-all shadow-xl shadow-brandDark/10 active:scale-95 whitespace-nowrap"
+                            className="bg-primary text-brandDark px-10 py-5 rounded-[20px] font-black text-xs uppercase tracking-widest hover:scale-[1.05] hover:shadow-2xl hover:shadow-primary/20 transition-all active:scale-95 whitespace-nowrap"
                         >
                             {action.label}
                         </button>
@@ -48,7 +50,7 @@ const AdminEmptyState: React.FC<AdminEmptyStateProps> = ({
                     {secondaryAction && (
                         <button
                             onClick={secondaryAction.onClick}
-                            className="text-sm font-black text-brandDark/60 hover:text-brandDark transition-colors"
+                            className="text-xs font-black uppercase tracking-widest text-brandDark/40 hover:text-brandDark transition-colors"
                         >
                             {secondaryAction.label}
                         </button>
@@ -57,9 +59,9 @@ const AdminEmptyState: React.FC<AdminEmptyStateProps> = ({
                     {onClearFilters && (
                         <button
                             onClick={onClearFilters}
-                            className="text-[10px] font-black uppercase tracking-widest text-brandDark/20 hover:text-primary transition-colors mt-2"
+                            className="text-[10px] font-black uppercase tracking-widest text-brandDark/20 hover:text-primary transition-colors mt-4"
                         >
-                            Limpar Filtros
+                            Limpar Filtros e Ver Tudo
                         </button>
                     )}
                 </div>

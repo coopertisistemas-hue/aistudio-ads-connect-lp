@@ -22,32 +22,32 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
     kpis
 }) => {
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex-1">
-                    <h1 className="text-3xl font-black text-brandDark">{title}</h1>
+        <div className="space-y-12 mb-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-8">
+                <div className="flex-1 space-y-2">
+                    <h1 className="text-4xl sm:text-5xl font-black text-brandDark tracking-tighter">{title}</h1>
                     {description && (
-                        <p className="text-brandDark/40 font-bold mt-1 tracking-tight">{description}</p>
+                        <p className="text-xl text-brandDark/40 font-bold tracking-tight max-w-2xl">{description}</p>
                     )}
 
                     {kpis && kpis.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
                             {kpis.map((kpi, idx) => (
-                                <div key={idx} className="kpi-card">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">{kpi.label}</p>
-                                    <p className="text-3xl font-black text-brandDark">{kpi.value}</p>
+                                <div key={idx} className="kpi-card hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brandDark/30">{kpi.label}</p>
+                                    <p className="text-4xl font-black text-brandDark tracking-tighter">{kpi.value}</p>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
                     {secondaryActions}
                     {primaryAction && (
                         <button
                             onClick={primaryAction.onClick}
-                            className="bg-brandDark text-white px-8 py-4 rounded-2xl font-black hover:bg-primary hover:text-brandDark transition-all shadow-xl shadow-brandDark/10 active:scale-95 whitespace-nowrap"
+                            className="bg-primary text-brandDark px-10 py-5 rounded-[20px] font-black hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 transition-all active:scale-95 whitespace-nowrap text-sm uppercase tracking-widest"
                         >
                             {primaryAction.label}
                         </button>

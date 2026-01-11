@@ -7,10 +7,18 @@ import {
     Megaphone,
     ArrowRight,
     Plus,
-    CircleDashed
+    CircleDashed,
+    TrendingUp,
+    Zap,
+    AlertCircle,
+    BarChart3,
+    ArrowUpRight,
+    Search,
+    Clock
 } from 'lucide-react';
 import AdminHeader from '../../components/admin/AdminHeader';
 import AdminEmptyState from '../../components/admin/AdminEmptyState';
+import { KPICard } from '../../components/admin/AdminUI';
 import { leadsService } from '../../admin/services/leadsService';
 import { sitesService } from '../../admin/services/sitesService';
 import { adsService } from '../../admin/services/adsService';
@@ -172,75 +180,137 @@ const AdminDashboardPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-10 pb-20">
+        <div className="space-y-12 pb-24">
             <AdminHeader
-                title="Dashboard"
-                description="Visão geral do desempenho e próximos passos do seu marketing."
-                kpis={kpis}
+                title="Centro de Controle"
+                description="Seu marketing centralizado. Mover métricas nunca foi tão fluido."
             />
 
-            {/* Quick Actions */}
-            <section className="space-y-6">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-brandDark/30 px-2">Ações Rápidas</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {quickActions.map((action, i) => {
-                        const Icon = action.icon;
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => navigate(action.path)}
-                                className="admin-card p-6 flex items-center justify-between group hover:border-primary transition-all active:scale-[0.98]"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-brandDark/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-brandDark transition-all">
-                                        <Icon size={24} strokeWidth={1.5} />
-                                    </div>
-                                    <span className="font-black text-brandDark group-hover:text-primary transition-colors">{action.label}</span>
-                                </div>
-                                <Plus size={20} className="text-brandDark/20 group-hover:text-primary group-hover:rotate-90 transition-all" />
-                            </button>
-                        );
-                    })}
-                </div>
-            </section>
+            {/* KPI Row (Top) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <KPICard label="Total de Leads" value={stats.totalLeads} icon={<Users />} subLabel="+12% que ontem" />
+                <KPICard label="Sites Publicados" value={stats.publishedSites} icon={<Globe />} subLabel="98% de uptime" variant="primary" />
+                <KPICard label="Ads em Execução" value={stats.activeAds} icon={<Megaphone />} subLabel="ROI médio 3.4" />
+                <KPICard label="Taxa Conversão" value="4.2%" icon={<TrendingUp />} subLabel="Otimizado por IA" />
+            </div>
 
-            {/* Shortcuts */}
-            <section className="space-y-6">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-brandDark/30 px-2">Navegação Direta</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {shortcuts.map((shortcut, i) => {
-                        const Icon = shortcut.icon;
-                        return (
-                            <div
-                                key={i}
-                                onClick={() => navigate(shortcut.path)}
-                                className="admin-card p-8 cursor-pointer group hover:scale-[1.02] transition-all bg-white"
-                            >
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${shortcut.color}`}>
-                                        <Icon size={24} strokeWidth={2} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                {/* Middle Left: Alerts & Opportunities */}
+                <div className="lg:col-span-2 space-y-12">
+                    {/* Alerts Block */}
+                    <section className="space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brandDark/20">Ações Prioritárias</h2>
+                            <Zap size={14} className="text-primary" />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="admin-card p-6 bg-red-50/30 border-red-500/10 flex items-center justify-between group cursor-pointer hover:bg-red-50/50 transition-all">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-12 h-12 bg-red-500/10 text-red-600 rounded-2xl flex items-center justify-center">
+                                        <AlertCircle size={24} />
                                     </div>
-                                    <ArrowRight className="text-brandDark/10 group-hover:text-primary transition-colors group-hover:translate-x-1 transition-transform" />
+                                    <div>
+                                        <h4 className="font-black text-brandDark text-base">Pixel Desconectado</h4>
+                                        <p className="text-xs font-bold text-brandDark/40">Seu site "Landing Page Verão" não está enviando eventos.</p>
+                                    </div>
                                 </div>
-                                <h3 className="text-xl font-black text-brandDark mb-2">{shortcut.title}</h3>
-                                <p className="text-sm font-bold text-brandDark/40 leading-relaxed mb-4">{shortcut.desc}</p>
-                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Gerenciar <Plus size={10} />
+                                <button className="text-[10px] font-black uppercase tracking-widest text-red-600 px-4 py-2 bg-red-500/10 rounded-xl hover:bg-red-500 hover:text-white transition-all">Corrigir Agora</button>
+                            </div>
+
+                            <div className="admin-card p-6 border-brandDark/5 flex items-center justify-between group cursor-pointer hover:border-primary/20 transition-all">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-12 h-12 bg-blue-500/10 text-blue-600 rounded-2xl flex items-center justify-center">
+                                        <Users size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-brandDark text-base">5 Novos Leads Qualificados</h4>
+                                        <p className="text-xs font-bold text-brandDark/40">Prontos para contato imediato via WhatsApp.</p>
+                                    </div>
+                                </div>
+                                <ArrowRight className="text-brandDark/10 group-hover:text-primary transition-all" />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Quick Actions Grid */}
+                    <section className="space-y-6">
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brandDark/20 px-2">Launchpad</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {quickActions.map((action, i) => {
+                                const Icon = action.icon;
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => navigate(action.path)}
+                                        className="admin-card p-10 flex flex-col items-start gap-4 group hover:border-primary transition-all active:scale-[0.98]"
+                                    >
+                                        <div className="w-14 h-14 bg-brandDark/5 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-brandDark transition-all">
+                                            <Icon size={28} strokeWidth={1.5} />
+                                        </div>
+                                        <div className="text-left">
+                                            <span className="block font-black text-xl text-brandDark">{action.label}</span>
+                                            <span className="text-[10px] font-bold text-brandDark/30 uppercase tracking-widest">Acesso Rápido</span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </section>
+                </div>
+
+                {/* Middle Right: Performance & Summary */}
+                <div className="space-y-12">
+                    <section className="space-y-6">
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-brandDark/20 px-2">Insights Gerais</h2>
+                        <div className="admin-card p-10 space-y-10">
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-end">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Ativação de Funil</p>
+                                    <p className="text-2xl font-black text-brandDark">78%</p>
+                                </div>
+                                <div className="h-3 w-full bg-brandDark/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-primary w-[78%] shadow-[0_0_15px_rgba(255,230,0,0.3)] animate-progress" />
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </section>
 
-            {/* Status Footer */}
-            <div className="admin-card p-6 bg-brandDark text-white flex items-center justify-between border-none shadow-none">
-                <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-glow" />
-                    <span className="text-xs font-bold text-white/60 tracking-tight">Sincronizado com LocalStorage (Modo Mock)</span>
-                </div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-white/20">
-                    Host Connect Parity — v1.0
+                            <div className="space-y-6 border-t border-brandDark/5 pt-10">
+                                <h5 className="text-sm font-black text-brandDark">Resumo Performance</h5>
+                                <ul className="space-y-4">
+                                    {[
+                                        { label: 'Custo por Lead', val: 'R$ 14,20', trend: '-8%' },
+                                        { label: 'Custo por Clique', val: 'R$ 0,85', trend: '+2%' },
+                                        { label: 'CTR Médio', val: '2.4%', trend: '+0.5%' },
+                                    ].map((item, i) => (
+                                        <li key={i} className="flex justify-between items-center group">
+                                            <span className="text-xs font-bold text-brandDark/40 group-hover:text-brandDark transition-colors">
+                                                {item.label}
+                                            </span>
+                                            <div className="text-right">
+                                                <p className="text-sm font-black text-brandDark">{item.val}</p>
+                                                <p className={`text-[10px] font-black ${item.trend.startsWith('-') ? 'text-green-500' : 'text-red-500'}`}>{item.trend}</p>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <button className="w-full bg-brandDark/5 text-brandDark py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all">
+                                Ver Relatório Completo
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* Status Footer Card */}
+                    <div className="admin-card p-10 bg-brandDark text-white flex flex-col gap-6 border-none shadow-2xl shadow-brandDark/20 overflow-hidden relative">
+                        <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+                        <div className="flex items-center gap-4 relative">
+                            <div className="w-3 h-3 rounded-full bg-primary animate-pulse shadow-[0_0_15px_rgba(255,230,0,0.6)]" />
+                            <span className="text-xs font-black tracking-tight">Sincronizado (Modo Mock)</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-white/30 leading-relaxed relative">
+                            A base de dados local está atualizada. <br />Última sincronização: Agora.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
