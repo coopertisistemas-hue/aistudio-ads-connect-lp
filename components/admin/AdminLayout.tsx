@@ -14,19 +14,55 @@ const AdminLayout: React.FC = () => {
         navigate(ROUTES.LOGIN);
     };
 
-    const menuItems = [
-        { label: 'Leads', path: ROUTES.ADMIN_LEADS, end: false },
-        { label: 'Sites', path: ROUTES.ADMIN_SITES, end: false },
-        { label: 'Anúncios', path: ROUTES.ADMIN_ADS, end: false },
-        { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS, end: false },
-        { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS, end: false },
+    const menuGroups = [
+        {
+            title: 'Operação',
+            items: [
+                { label: 'Leads', path: ROUTES.ADMIN_LEADS },
+                { label: 'Sites', path: ROUTES.ADMIN_SITES },
+                { label: 'Anúncios', path: ROUTES.ADMIN_ADS },
+            ]
+        },
+        {
+            title: 'Performance',
+            items: [
+                { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS },
+                { label: 'Insights', path: ROUTES.ADMIN_INSIGHTS },
+            ]
+        },
+        {
+            title: 'Monetização',
+            items: [
+                { label: 'Planos', path: ROUTES.ADMIN_PLANS },
+                { label: 'Assinaturas', path: ROUTES.ADMIN_SUBSCRIPTIONS },
+                { label: 'Faturamento', path: ROUTES.ADMIN_BILLING },
+            ]
+        },
+        {
+            title: 'Administração',
+            items: [
+                { label: 'Clientes', path: ROUTES.ADMIN_CLIENTS },
+                { label: 'Usuários', path: ROUTES.ADMIN_USERS },
+                { label: 'Permissões', path: ROUTES.ADMIN_PERMISSIONS },
+            ]
+        },
+        {
+            title: 'Sistema',
+            items: [
+                { label: 'Integrações', path: ROUTES.ADMIN_INTEGRATIONS },
+                { label: 'Auditoria', path: ROUTES.ADMIN_AUDIT },
+                { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS },
+                { label: 'Ajuda & Suporte', path: ROUTES.ADMIN_HELP },
+            ]
+        }
     ];
 
     const getPageTitle = () => {
-        const current = menuItems.find(item =>
-            item.end ? location.pathname === item.path : location.pathname.startsWith(item.path)
-        );
-        return current?.label || 'Painel';
+        for (const group of menuGroups) {
+            const current = group.items.find(item => location.pathname.startsWith(item.path));
+            if (current) return current.label;
+        }
+        return 'Painel';
     };
 
     return (
@@ -45,29 +81,40 @@ const AdminLayout: React.FC = () => {
         transition-transform duration-300 lg:translate-x-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-                <div className="flex items-center gap-3 mb-12">
+                <div className="flex items-center gap-3 mb-10">
                     <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
                         <span className="text-brandDark font-black text-2xl">A</span>
                     </div>
                     <span className="text-xl font-black tracking-tight uppercase">ADS <span className="text-primary">Connect</span></span>
                 </div>
 
-                <nav className="flex-1 space-y-2">
-                    {menuItems.map(item => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            end={item.end}
-                            onClick={() => setIsSidebarOpen(false)}
-                            className={({ isActive }) => `
-                flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all
-                ${isActive
-                                    ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
-                                    : 'text-white/50 hover:text-white hover:bg-white/5'}
-              `}
-                        >
-                            {item.label}
-                        </NavLink>
+                <nav className="flex-1 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
+                    {menuGroups.map((group, idx) => (
+                        <div key={idx} className="space-y-3">
+                            <h3 className="px-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                                {group.title}
+                            </h3>
+                            <div className="space-y-1">
+                                {group.items.map(item => (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                        className={({ isActive }) => `
+                      flex items-center gap-4 px-6 py-3 rounded-xl font-bold transition-all text-sm
+                      ${isActive
+                                                ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
+                                                : 'text-white/50 hover:text-white hover:bg-white/5'}
+                    `}
+                                    >
+                                        {item.label}
+                                    </NavLink>
+                                ))}
+                            </div>
+                            {idx < menuGroups.length - 1 && (
+                                <div className="mx-6 pt-4 border-b border-white/5" />
+                            )}
+                        </div>
                     ))}
                 </nav>
 

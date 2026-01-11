@@ -8,6 +8,16 @@ import AdminSitesPage from './pages/admin/AdminSitesPage';
 import AdminAdsPage from './pages/admin/AdminAdsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminConfigPage from './pages/admin/AdminConfigPage';
+import AdminInsightsPage from './pages/admin/AdminInsightsPage';
+import AdminPlanosPage from './pages/admin/AdminPlanosPage';
+import AdminAssinaturasPage from './pages/admin/AdminAssinaturasPage';
+import AdminFaturamentoPage from './pages/admin/AdminFaturamentoPage';
+import AdminClientesPage from './pages/admin/AdminClientesPage';
+import AdminUsuariosPage from './pages/admin/AdminUsuariosPage';
+import AdminPermissoesPage from './pages/admin/AdminPermissoesPage';
+import AdminIntegracoesPage from './pages/admin/AdminIntegracoesPage';
+import AdminAuditoriaPage from './pages/admin/AdminAuditoriaPage';
+import AdminAjudaPage from './pages/admin/AdminAjudaPage';
 import AdminPlaceholderPage from './pages/admin/AdminPlaceholderPage';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
@@ -39,6 +49,18 @@ const App: React.FC = () => {
           <Route path="anuncios" element={<AdminAdsPage />} />
           <Route path="relatorios" element={<AdminReportsPage />} />
           <Route path="configuracoes" element={<AdminConfigPage />} />
+
+          {/* New Placeholder Routes */}
+          <Route path="insights" element={<AdminInsightsPage />} />
+          <Route path="planos" element={<AdminPlanosPage />} />
+          <Route path="assinaturas" element={<AdminAssinaturasPage />} />
+          <Route path="faturamento" element={<AdminFaturamentoPage />} />
+          <Route path="clientes" element={<AdminClientesPage />} />
+          <Route path="usuarios" element={<AdminUsuariosPage />} />
+          <Route path="permissoes" element={<AdminPermissoesPage />} />
+          <Route path="integracoes" element={<AdminIntegracoesPage />} />
+          <Route path="auditoria" element={<AdminAuditoriaPage />} />
+          <Route path="ajuda" element={<AdminAjudaPage />} />
 
           {/* Legacy & Fallback Redirects */}
           <Route path="ads" element={<Navigate to={ROUTES.ADMIN_ADS} replace />} />
