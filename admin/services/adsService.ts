@@ -65,5 +65,23 @@ export const adsService = {
         ads.push(newAd);
         saveAds(ads);
         return newAd;
+    },
+
+    async updateAd(id: string, data: Partial<Ad>): Promise<Ad> {
+        const ads = getAds();
+        const index = ads.findIndex(a => a.id === id);
+
+        if (index === -1) throw new Error('Ad not found');
+
+        const updatedAd: Ad = {
+            ...ads[index],
+            ...data,
+            id: ads[index].id, // Immutable
+            createdAt: ads[index].createdAt // Immutable
+        };
+
+        ads[index] = updatedAd;
+        saveAds(ads);
+        return updatedAd;
     }
 };

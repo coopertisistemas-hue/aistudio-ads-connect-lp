@@ -6,6 +6,8 @@ const AdminAdsPage: React.FC = () => {
     const [ads, setAds] = useState<Ad[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
+    const [originalAd, setOriginalAd] = useState<Ad | null>(null);
     const [newAd, setNewAd] = useState<Partial<Ad>>({
         name: '',
         channel: 'google',
@@ -25,22 +27,23 @@ const AdminAdsPage: React.FC = () => {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isModalOpen) {
-                handleCloseModal();
+            if (e.key === 'Escape') {
+                if (isModalOpen) handleCloseModal();
+                if (selectedAd) handleCloseDrawer();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isModalOpen]);
+    }, [isModalOpen, selectedAd]);
 
     useEffect(() => {
-        if (isModalOpen) {
+        if (isModalOpen || selectedAd) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
         }
         return () => { document.body.style.overflow = 'unset'; };
-    }, [isModalOpen]);
+    }, [isModalOpen, selectedAd]);
 
     const loadAds = async () => {
         setLoading(true);
@@ -83,18 +86,18 @@ const AdminAdsPage: React.FC = () => {
         setTimeout(() => setToast(null), 3000);
     };
 
-    const validateAd = () => {
+    const validateAdData = (data: Partial<Ad>) => {
         const newErrors: Record<string, string> = {};
-        if (!newAd.name?.trim()) newErrors.name = 'Nome é obrigatório';
-        if (!newAd.channel) newErrors.channel = 'Canal é obrigatório';
-        if (!newAd.objective) newErrors.objective = 'Objetivo é obrigatório';
+        if (!data.name?.trim()) newErrors.name = 'Nome é obrigatório';
+        if (!data.channel) newErrors.channel = 'Canal é obrigatório';
+        if (!data.objective) newErrors.objective = 'Objetivo é obrigatório';
 
-        if (!newAd.dailyBudget && !newAd.totalBudget) {
+        if (!data.dailyBudget && !data.totalBudget) {
             newErrors.budget = 'Informe ao menos o Orçamento Diário ou Total';
         }
 
-        if (newAd.startDate && newAd.endDate) {
-            if (new Date(newAd.endDate) < new Date(newAd.startDate)) {
+        if (data.startDate && data.endDate) {
+            if (new Date(data.endDate) < new Date(data.startDate)) {
                 newErrors.endDate = 'Data de término deve ser após a de início';
             }
         }
@@ -105,7 +108,7 @@ const AdminAdsPage: React.FC = () => {
 
     const handleCreateAd = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateAd()) {
+        if (!validateAdData(newAd)) {
             showToast('Verifique os campos obrigatórios.', 'error');
             return;
         }
@@ -118,6 +121,45 @@ const AdminAdsPage: React.FC = () => {
         } catch (error) {
             showToast('Erro ao criar anúncio.', 'error');
         }
+    };
+
+    const handleUpdateAd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedAd) return;
+
+        if (!validateAdData(selectedAd)) {
+            showToast('Verifique os campos obrigatórios.', 'error');
+            return;
+        }
+
+        try {
+            await adsService.updateAd(selectedAd.id, selectedAd);
+            showToast('Anúncio atualizado com sucesso!');
+            setSelectedAd(null);
+            setOriginalAd(null);
+            setErrors({});
+            loadAds();
+        } catch (error) {
+            showToast('Erro ao atualizar anúncio.', 'error');
+        }
+    };
+
+    const handleSelectAd = (ad: Ad) => {
+        setSelectedAd({ ...ad });
+        setOriginalAd({ ...ad });
+        setErrors({});
+    };
+
+    const handleCloseDrawer = () => {
+        if (selectedAd && originalAd) {
+            const hasChanges = JSON.stringify(selectedAd) !== JSON.stringify(originalAd);
+            if (hasChanges && !window.confirm('Existem alterações não salvas. Deseja realmente descartar?')) {
+                return;
+            }
+        }
+        setSelectedAd(null);
+        setOriginalAd(null);
+        setErrors({});
     };
 
     const handleCloseModal = () => {
@@ -169,6 +211,7 @@ const AdminAdsPage: React.FC = () => {
                             {ads.map((ad) => (
                                 <tr
                                     key={ad.id}
+                                    onClick={() => handleSelectAd(ad)}
                                     className="group hover:bg-[#F8F9FA] transition-colors cursor-pointer"
                                 >
                                     <td>
@@ -350,6 +393,147 @@ const AdminAdsPage: React.FC = () => {
                             <button type="submit" className="w-full bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10 mt-4">
                                 Criar Campanha
                             </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Ad Detail Drawer */}
+            {selectedAd && (
+                <div className="fixed inset-0 z-[200] flex justify-end">
+                    <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-sm" onClick={handleCloseDrawer}></div>
+                    <div className="bg-white w-full max-w-xl h-full shadow-2xl relative z-10 flex flex-col animate-slideInRight">
+                        <div className="p-8 border-b border-brandDark/5 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-2xl font-black text-brandDark">Editar Anúncio</h3>
+                                <p className="text-xs font-bold text-brandDark/40 uppercase tracking-widest mt-1">ID: {selectedAd.id}</p>
+                            </div>
+                            <button onClick={handleCloseDrawer} className="admin-btn-icon">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateAd} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Nome da Campanha *</label>
+                                    <input
+                                        type="text"
+                                        value={selectedAd.name}
+                                        onChange={(e) => {
+                                            setSelectedAd({ ...selectedAd, name: e.target.value });
+                                            if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                                        }}
+                                        className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.name ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                    />
+                                    {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 pl-1">{errors.name}</p>}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Canal *</label>
+                                        <select
+                                            value={selectedAd.channel}
+                                            onChange={(e) => setSelectedAd({ ...selectedAd, channel: e.target.value as any })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        >
+                                            <option value="google">Google Ads</option>
+                                            <option value="meta">Meta Ads (FB/IG)</option>
+                                            <option value="tiktok">TikTok Ads</option>
+                                            <option value="x">X (Twitter) Ads</option>
+                                            <option value="other">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Objetivo *</label>
+                                        <select
+                                            value={selectedAd.objective}
+                                            onChange={(e) => setSelectedAd({ ...selectedAd, objective: e.target.value as any })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        >
+                                            <option value="traffic">Tráfego</option>
+                                            <option value="leads">Leads / Cadastro</option>
+                                            <option value="messages">Mensagens (WA)</option>
+                                            <option value="awareness">Reconhecimento</option>
+                                            <option value="sales">Vendas</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Status</label>
+                                    <select
+                                        value={selectedAd.status}
+                                        onChange={(e) => setSelectedAd({ ...selectedAd, status: e.target.value as any })}
+                                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                    >
+                                        <option value="draft">Rascunho</option>
+                                        <option value="active">Ativo</option>
+                                        <option value="paused">Pausado</option>
+                                        <option value="ended">Finalizado</option>
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Orçamento Diário (R$)</label>
+                                        <input
+                                            type="number"
+                                            value={selectedAd.dailyBudget || ''}
+                                            onChange={(e) => {
+                                                setSelectedAd({ ...selectedAd, dailyBudget: Number(e.target.value) || undefined });
+                                                if (errors.budget) setErrors(prev => ({ ...prev, budget: '' }));
+                                            }}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.budget ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Orçamento Total (R$)</label>
+                                        <input
+                                            type="number"
+                                            value={selectedAd.totalBudget || ''}
+                                            onChange={(e) => {
+                                                setSelectedAd({ ...selectedAd, totalBudget: Number(e.target.value) || undefined });
+                                                if (errors.budget) setErrors(prev => ({ ...prev, budget: '' }));
+                                            }}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.budget ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                        />
+                                    </div>
+                                </div>
+                                {errors.budget && <p className="text-[10px] font-bold text-red-500 text-center">{errors.budget}</p>}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Início</label>
+                                        <input
+                                            type="date"
+                                            value={selectedAd.startDate ? selectedAd.startDate.split('T')[0] : ''}
+                                            onChange={(e) => setSelectedAd({ ...selectedAd, startDate: e.target.value })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Término</label>
+                                        <input
+                                            type="date"
+                                            value={selectedAd.endDate ? selectedAd.endDate.split('T')[0] : ''}
+                                            onChange={(e) => {
+                                                setSelectedAd({ ...selectedAd, endDate: e.target.value });
+                                                if (errors.endDate) setErrors(prev => ({ ...prev, endDate: '' }));
+                                            }}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.endDate ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                        />
+                                        {errors.endDate && <p className="text-[10px] font-bold text-red-500 mt-1 pl-1">{errors.endDate}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t border-brandDark/5">
+                                <p className="text-[10px] font-bold text-brandDark/30 uppercase tracking-widest mb-6 text-center">Criado em: {new Date(selectedAd.createdAt).toLocaleString('pt-BR')}</p>
+                                <button type="submit" className="w-full bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10">
+                                    Salvar Alterações
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
