@@ -20,10 +20,18 @@ const AdminAdsPage: React.FC = () => {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+    const [filters, setFilters] = useState({
+        search: '',
+        status: 'ALL',
+        channel: 'ALL',
+        objective: 'ALL',
+        timeframe: 'ALL',
+        hasBudget: false
+    });
 
     useEffect(() => {
         loadAds();
-    }, []);
+    }, [filters]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,7 +56,7 @@ const AdminAdsPage: React.FC = () => {
     const loadAds = async () => {
         setLoading(true);
         try {
-            const result = await adsService.listAds();
+            const result = await adsService.listAds(filters as any);
             setAds(result.data);
         } catch (error) {
             console.error('Error loading ads:', error);
@@ -162,6 +170,32 @@ const AdminAdsPage: React.FC = () => {
         setErrors({});
     };
 
+    const handleDeleteAd = async () => {
+        if (!selectedAd) return;
+        if (!window.confirm(`Tem certeza que deseja excluir permanentemente a campanha "${selectedAd.name}"?`)) return;
+
+        try {
+            await adsService.deleteAd(selectedAd.id);
+            showToast('Campanha excluída permanentemente.');
+            setSelectedAd(null);
+            setOriginalAd(null);
+            loadAds();
+        } catch (error) {
+            showToast('Erro ao excluir campanha.', 'error');
+        }
+    };
+
+    const handleClearFilters = () => {
+        setFilters({
+            search: '',
+            status: 'ALL',
+            channel: 'ALL',
+            objective: 'ALL',
+            timeframe: 'ALL',
+            hasBudget: false
+        });
+    };
+
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setNewAd({
@@ -191,6 +225,78 @@ const AdminAdsPage: React.FC = () => {
                 >
                     + Novo Anúncio
                 </button>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="flex flex-col gap-6 bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div className="lg:col-span-2">
+                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Buscar</label>
+                        <input
+                            type="text"
+                            placeholder="Nome, Canal ou Objetivo..."
+                            value={filters.search}
+                            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-3 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Status</label>
+                        <select
+                            value={filters.status}
+                            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
+                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-3 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            <option value="ALL">Todos os Status</option>
+                            <option value="active">Ativo</option>
+                            <option value="paused">Pausado</option>
+                            <option value="ended">Finalizado</option>
+                            <option value="draft">Rascunho</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Canal</label>
+                        <select
+                            value={filters.channel}
+                            onChange={(e) => setFilters(prev => ({ ...prev, channel: e.target.value as any }))}
+                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-3 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            <option value="ALL">Todos os Canais</option>
+                            <option value="google">Google</option>
+                            <option value="meta">Meta</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="x">X</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Duração</label>
+                        <select
+                            value={filters.timeframe}
+                            onChange={(e) => setFilters(prev => ({ ...prev, timeframe: e.target.value as any }))}
+                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-3 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            <option value="ALL">Qualquer Período</option>
+                            <option value="active">Ativos Hoje</option>
+                            <option value="upcoming">Agendados</option>
+                            <option value="ended">Encerrados</option>
+                        </select>
+                    </div>
+                    <div className="flex items-end pb-1">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={filters.hasBudget}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, hasBudget: e.target.checked }))}
+                                    className="sr-only"
+                                />
+                                <div className={`w-10 h-5 rounded-full transition-colors ${filters.hasBudget ? 'bg-primary' : 'bg-brandDark/10 group-hover:bg-brandDark/20'}`}></div>
+                                <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${filters.hasBudget ? 'translate-x-5' : ''}`}></div>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/60 group-hover:text-brandDark">C/ Orçamento</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             {/* List / Table */}
@@ -264,7 +370,13 @@ const AdminAdsPage: React.FC = () => {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                                                 </svg>
                                             </div>
-                                            <p className="text-brandDark/30 font-bold">Nenhum anúncio encontrado. Comece criando sua primeira campanha.</p>
+                                            <p className="text-brandDark/30 font-bold">Nenhum anúncio encontrado para estes filtros.</p>
+                                            <button
+                                                onClick={handleClearFilters}
+                                                className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-brandDark transition-colors"
+                                            >
+                                                Limpar Filtros
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -532,6 +644,14 @@ const AdminAdsPage: React.FC = () => {
                                 <p className="text-[10px] font-bold text-brandDark/30 uppercase tracking-widest mb-6 text-center">Criado em: {new Date(selectedAd.createdAt).toLocaleString('pt-BR')}</p>
                                 <button type="submit" className="w-full bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10">
                                     Salvar Alterações
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteAd}
+                                    className="w-full mt-4 py-4 text-xs font-black text-red-400 hover:text-red-600 transition-colors uppercase tracking-[0.2em]"
+                                >
+                                    Excluir Campanha Permanentemente
                                 </button>
                             </div>
                         </form>
