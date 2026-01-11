@@ -7,6 +7,7 @@ import AdminLeadsPage from './pages/admin/AdminLeadsPage';
 import AdminSitesPage from './pages/admin/AdminSitesPage';
 import AdminAdsPage from './pages/admin/AdminAdsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
+import AdminConfigPage from './pages/admin/AdminConfigPage';
 import AdminPlaceholderPage from './pages/admin/AdminPlaceholderPage';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
@@ -37,7 +38,7 @@ const App: React.FC = () => {
           <Route path="sites" element={<AdminSitesPage />} />
           <Route path="anuncios" element={<AdminAdsPage />} />
           <Route path="relatorios" element={<AdminReportsPage />} />
-          <Route path="configuracoes" element={<AdminPlaceholderPage />} />
+          <Route path="configuracoes" element={<AdminConfigPage />} />
         </Route>
         <Route path="*" element={<Navigate to={ROUTES.LP} replace />} />
       </Routes>
