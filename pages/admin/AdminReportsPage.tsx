@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { reportsService, ReportStats } from '../../admin/services/reportsService';
+import { reportsService, ReportStats, ReportFilters } from '../../admin/services/reportsService';
 
 const AdminReportsPage: React.FC = () => {
     const [stats, setStats] = useState<ReportStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState<ReportFilters>({
+        dateRange: '30',
+        leadStatus: 'ALL',
+        adChannel: 'ALL'
+    });
 
     useEffect(() => {
         loadStats();
-    }, []);
+    }, [filters]);
 
     const loadStats = async () => {
         setLoading(true);
         try {
-            const data = await reportsService.getGlobalStats();
+            const data = await reportsService.getGlobalStats(filters);
             setStats(data);
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -34,13 +39,22 @@ const AdminReportsPage: React.FC = () => {
 
     if (!stats || (stats.leads.total === 0 && stats.sites.total === 0 && stats.ads.total === 0)) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-                <div className="w-20 h-20 bg-brandDark/5 rounded-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-brandDark/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                </div>
-                <div className="max-w-md space-y-2">
-                    <h2 className="text-2xl font-black text-brandDark">Sem dados suficientes</h2>
-                    <p className="text-brandDark/40 font-bold">Ainda não há dados para gerar relatórios. Comece criando leads, sites ou anúncios nos respectivos módulos.</p>
+            <div className="space-y-10">
+                <Header filters={filters} setFilters={setFilters} />
+                <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+                    <div className="w-20 h-20 bg-brandDark/5 rounded-full flex items-center justify-center">
+                        <svg className="w-10 h-10 text-brandDark/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    </div>
+                    <div className="max-w-md space-y-2">
+                        <h2 className="text-2xl font-black text-brandDark">Sem dados suficientes</h2>
+                        <p className="text-brandDark/40 font-bold">Ainda não há dados para gerar relatórios com estes filtros. Tente ajustar os filtros ou crie novos leads/sites/anúncios.</p>
+                        <button
+                            onClick={() => setFilters({ dateRange: 'ALL', leadStatus: 'ALL', adChannel: 'ALL' })}
+                            className="text-primary font-black uppercase tracking-widest text-xs mt-4"
+                        >
+                            Limpar Filtros
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -48,11 +62,7 @@ const AdminReportsPage: React.FC = () => {
 
     return (
         <div className="space-y-10 pb-20 animate-fadeIn">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-black text-brandDark">Relatórios & Insights</h1>
-                <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Visão consolidada da sua operação comercial e de marketing.</p>
-            </div>
+            <Header filters={filters} setFilters={setFilters} />
 
             {/* Main KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -103,6 +113,137 @@ const AdminReportsPage: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* Drilldown Tables */}
+            <div className="grid grid-cols-1 gap-8">
+                {/* Recent Leads */}
+                <div className="admin-card overflow-hidden">
+                    <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
+                        <h3 className="text-xl font-black text-brandDark">Leads Recentes (Dentro do Filtro)</h3>
+                        <span className="bg-primary/20 text-brandDark text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.leads.recent.length} listados</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Status</th>
+                                    <th>Data de Criação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.leads.recent.map(lead => (
+                                    <tr key={lead.id}>
+                                        <td className="font-black text-brandDark">{lead.name}</td>
+                                        <td>
+                                            <span className={`status-badge status-${lead.status}`}>
+                                                {lead.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="text-xs font-bold text-brandDark/40">
+                                            {new Date(lead.createdAt).toLocaleString('pt-BR')}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Recent Ads */}
+                <div className="admin-card overflow-hidden">
+                    <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
+                        <h3 className="text-xl font-black text-brandDark">Campanhas em Destaque</h3>
+                        <span className="bg-brandDark text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.ads.recent.length} listadas</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Campanha</th>
+                                    <th>Canal</th>
+                                    <th>Investimento</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.ads.recent.map(ad => (
+                                    <tr key={ad.id}>
+                                        <td className="font-black text-brandDark">{ad.name}</td>
+                                        <td className="text-xs font-black uppercase tracking-widest text-brandDark/60">{ad.channel}</td>
+                                        <td className="text-sm font-bold text-brandDark/70">
+                                            {ad.dailyBudget ? `R$ ${ad.dailyBudget}/dia` : ad.totalBudget ? `R$ ${ad.totalBudget} total` : '—'}
+                                        </td>
+                                        <td>
+                                            <span className={`status-badge status-${ad.status}`}>
+                                                {ad.status === 'active' ? 'Ativo' : ad.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Header: React.FC<{ filters: ReportFilters, setFilters: React.Dispatch<React.SetStateAction<ReportFilters>> }> = ({ filters, setFilters }) => {
+    return (
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+            <div>
+                <h1 className="text-3xl font-black text-brandDark">Relatórios & Insights</h1>
+                <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Análise granular de performance e conversão.</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                <div className="flex flex-col gap-2 min-w-[150px]">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/30 pl-1">Período</label>
+                    <select
+                        value={filters.dateRange}
+                        onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as any }))}
+                        className="bg-white border-black/5 border rounded-xl px-4 py-2 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30">Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                        <option value="ALL">Todo o período</option>
+                    </select>
+                </div>
+
+                <div className="flex flex-col gap-2 min-w-[150px]">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/30 pl-1">Canal (Ads)</label>
+                    <select
+                        value={filters.adChannel}
+                        onChange={(e) => setFilters(prev => ({ ...prev, adChannel: e.target.value as any }))}
+                        className="bg-white border-black/5 border rounded-xl px-4 py-2 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                        <option value="ALL">Todos os Canais</option>
+                        <option value="google">Google Ads</option>
+                        <option value="meta">Meta Ads</option>
+                        <option value="tiktok">TikTok Ads</option>
+                        <option value="x">X Ads</option>
+                    </select>
+                </div>
+
+                <div className="flex flex-col gap-2 min-w-[150px]">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/30 pl-1">Status (Leads)</label>
+                    <select
+                        value={filters.leadStatus}
+                        onChange={(e) => setFilters(prev => ({ ...prev, leadStatus: e.target.value as any }))}
+                        className="bg-white border-black/5 border rounded-xl px-4 py-2 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none"
+                    >
+                        <option value="ALL">Todos os Status</option>
+                        <option value="new">Novo</option>
+                        <option value="contacted">Contatado</option>
+                        <option value="negotiating">Negociando</option>
+                        <option value="converted">Convertido</option>
+                        <option value="lost">Perdido</option>
+                    </select>
                 </div>
             </div>
         </div>

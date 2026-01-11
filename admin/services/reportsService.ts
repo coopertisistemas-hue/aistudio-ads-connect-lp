@@ -13,16 +13,24 @@ export interface ReportStats {
         total: number;
         last7Days: number;
         byStatus: Record<string, number>;
+        recent: Lead[];
     };
     ads: {
         total: number;
         activeNow: number;
         byChannel: Record<string, number>;
+        recent: Ad[];
     };
     sites: {
         total: number;
         byStatus: Record<string, number>;
     };
+}
+
+export interface ReportFilters {
+    dateRange: '7' | '30' | '90' | 'ALL';
+    leadStatus?: string | 'ALL';
+    adChannel?: string | 'ALL';
 }
 
 const getStoredData = <T>(key: string): T[] => {
@@ -35,15 +43,36 @@ const getStoredData = <T>(key: string): T[] => {
 };
 
 export const reportsService = {
-    async getGlobalStats(): Promise<ReportStats> {
+    async getGlobalStats(filters?: ReportFilters): Promise<ReportStats> {
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        const leads = getStoredData<Lead>(STORAGE_KEYS.LEADS);
-        const sites = getStoredData<Site>(STORAGE_KEYS.SITES);
-        const ads = getStoredData<Ad>(STORAGE_KEYS.ADS);
+        let leads = getStoredData<Lead>(STORAGE_KEYS.LEADS);
+        let sites = getStoredData<Site>(STORAGE_KEYS.SITES);
+        let ads = getStoredData<Ad>(STORAGE_KEYS.ADS);
 
         const now = new Date();
+
+        // 1. Apply Global Date Filtering
+        if (filters?.dateRange && filters.dateRange !== 'ALL') {
+            const days = parseInt(filters.dateRange);
+            const rangeDate = new Date();
+            rangeDate.setDate(now.getDate() - days);
+
+            leads = leads.filter(l => new Date(l.createdAt) >= rangeDate);
+            ads = ads.filter(a => new Date(a.createdAt) >= rangeDate);
+            // Sites are usually persistent infrastructure, but we could filter by creation if needed
+        }
+
+        // 2. Apply Specific Filters
+        if (filters?.leadStatus && filters.leadStatus !== 'ALL') {
+            leads = leads.filter(l => l.status === filters.leadStatus);
+        }
+
+        if (filters?.adChannel && filters.adChannel !== 'ALL') {
+            ads = ads.filter(a => a.channel === filters.adChannel);
+        }
+
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(now.getDate() - 7);
 
@@ -54,7 +83,8 @@ export const reportsService = {
             byStatus: leads.reduce((acc, l) => {
                 acc[l.status] = (acc[l.status] || 0) + 1;
                 return acc;
-            }, {} as Record<string, number>)
+            }, {} as Record<string, number>),
+            recent: [...leads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10)
         };
 
         // Compute Ads
@@ -69,7 +99,8 @@ export const reportsService = {
             byChannel: ads.reduce((acc, ad) => {
                 acc[ad.channel] = (acc[ad.channel] || 0) + 1;
                 return acc;
-            }, {} as Record<string, number>)
+            }, {} as Record<string, number>),
+            recent: [...ads].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10)
         };
 
         // Compute Sites
