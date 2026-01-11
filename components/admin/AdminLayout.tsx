@@ -3,6 +3,32 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../../auth/mockAuth';
 import { ROUTES } from '../../config/constants';
 import '../../styles/admin.css';
+import {
+    X,
+    Menu,
+    LogOut,
+    LayoutDashboard,
+    Users,
+    Globe,
+    Megaphone,
+    BoxSelect,
+    Layers,
+    Sparkles,
+    TrendingUp,
+    BarChart3,
+    Contact,
+    FileText,
+    CreditCard,
+    CalendarDays,
+    ReceiptText,
+    UserCog,
+    ShieldCheck,
+    Cable,
+    History,
+    HelpCircle,
+    Settings,
+    Image as ImageIcon
+} from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -18,50 +44,52 @@ const AdminLayout: React.FC = () => {
         {
             title: 'Operação',
             items: [
-                { label: 'Dashboard', path: ROUTES.ADMIN_DASHBOARD },
-                { label: 'Leads', path: ROUTES.ADMIN_LEADS },
-                { label: 'Sites', path: ROUTES.ADMIN_SITES },
-                { label: 'Anúncios', path: ROUTES.ADMIN_ADS },
+                { label: 'Dashboard', path: ROUTES.ADMIN_DASHBOARD, icon: LayoutDashboard },
+                { label: 'Leads de Vendas', path: ROUTES.ADMIN_LEADS, icon: Users },
+                { label: 'Sites & Landing', path: ROUTES.ADMIN_SITES, icon: Globe },
+                { label: 'Anúncios / Ads', path: ROUTES.ADMIN_ADS, icon: Megaphone },
+                { label: 'Criativos / Mídia', path: ROUTES.ADMIN_CREATIVES, icon: ImageIcon },
             ]
         },
         {
-            title: 'Performance',
+            title: 'Inventário',
             items: [
-                { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS },
-                { label: 'Insights', path: ROUTES.ADMIN_INSIGHTS },
+                { label: 'Inventário Geral', path: ROUTES.ADMIN_INVENTORY, icon: Layers },
+                { label: 'Slots de Ad', path: ROUTES.ADMIN_SLOTS, icon: BoxSelect },
             ]
         },
         {
-            title: 'Monetização',
+            title: 'Estratégia',
             items: [
-                { label: 'Planos', path: ROUTES.ADMIN_PLANS },
-                { label: 'Assinaturas', path: ROUTES.ADMIN_SUBSCRIPTIONS },
-                { label: 'Faturamento', path: ROUTES.ADMIN_BILLING },
+                { label: 'Insights IA', path: ROUTES.ADMIN_INSIGHTS, icon: Sparkles },
+                { label: 'Marketing View', path: ROUTES.ADMIN_MARKETING, icon: TrendingUp },
+                { label: 'Relatórios', path: ROUTES.ADMIN_REPORTS, icon: BarChart3 },
             ]
         },
         {
-            title: 'Administração',
+            title: 'Comercial',
             items: [
-                { label: 'Clientes', path: ROUTES.ADMIN_CLIENTS },
-                { label: 'Usuários', path: ROUTES.ADMIN_USERS },
-                { label: 'Permissões', path: ROUTES.ADMIN_PERMISSIONS },
+                { label: 'Gestão de Clientes', path: ROUTES.ADMIN_CLIENTS, icon: Contact },
+                { label: 'Contratos Jurídico', path: ROUTES.ADMIN_CONTRACTS, icon: FileText },
+                { label: 'Planos & Pricing', path: ROUTES.ADMIN_PLANS, icon: CreditCard },
+                { label: 'Assinaturas', path: ROUTES.ADMIN_SUBSCRIPTIONS, icon: CalendarDays },
+                { label: 'Faturamento', path: ROUTES.ADMIN_BILLING, icon: ReceiptText },
             ]
         },
         {
             title: 'Sistema',
             items: [
-                { label: 'Integrações', path: ROUTES.ADMIN_INTEGRATIONS },
-                { label: 'Auditoria', path: ROUTES.ADMIN_AUDIT },
-                { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS },
-                { label: 'Ajuda & Suporte', path: ROUTES.ADMIN_HELP },
+                { label: 'Usuários', path: ROUTES.ADMIN_USERS, icon: UserCog },
+                { label: 'Permissões (Roles)', path: ROUTES.ADMIN_PERMISSIONS, icon: ShieldCheck },
+                { label: 'Integrações API', path: ROUTES.ADMIN_INTEGRATIONS, icon: Cable },
+                { label: 'Logs / Auditoria', path: ROUTES.ADMIN_AUDIT, icon: History },
+                { label: 'Suporte / Ajuda', path: ROUTES.ADMIN_HELP, icon: HelpCircle },
+                { label: 'Configurações', path: ROUTES.ADMIN_SETTINGS, icon: Settings },
                 {
                     label: 'Sair da conta',
                     path: '#logout',
-                    onClick: () => {
-                        if (window.confirm('Deseja realmente sair da conta?')) {
-                            handleLogout();
-                        }
-                    }
+                    icon: LogOut,
+                    onClick: handleLogout
                 },
             ]
         }
@@ -107,10 +135,11 @@ const AdminLayout: React.FC = () => {
                             <div className="space-y-1">
                                 {group.items.map(item => {
                                     const isLogout = item.path === '#logout';
+                                    const Icon = item.icon;
 
                                     const baseClasses = `
-                                        flex items-center gap-4 px-6 py-3 rounded-xl font-bold transition-all text-sm
-                                        ${isLogout ? 'text-red-400/60 hover:text-red-400 hover:bg-red-400/5' : ''}
+                                        flex items-center gap-4 px-6 py-4 rounded-[20px] font-black transition-all text-sm group relative
+                                        ${isLogout ? 'text-red-400/40 hover:text-red-400 hover:bg-red-400/5' : ''}
                                     `;
 
                                     if (isLogout) {
@@ -120,6 +149,7 @@ const AdminLayout: React.FC = () => {
                                                 onClick={item.onClick}
                                                 className={baseClasses}
                                             >
+                                                <Icon size={20} className="opacity-40 group-hover:opacity-100 transition-opacity" strokeWidth={2} />
                                                 {item.label}
                                             </button>
                                         );
@@ -133,11 +163,17 @@ const AdminLayout: React.FC = () => {
                                             className={({ isActive }) => `
                                                 ${baseClasses}
                                                 ${isActive
-                                                    ? 'bg-primary text-brandDark shadow-lg shadow-primary/20 scale-105'
-                                                    : 'text-white/50 hover:text-white hover:bg-white/5'}
+                                                    ? 'bg-white/[0.03] text-primary shadow-2xl shadow-brandDark/50'
+                                                    : 'text-white/30 hover:text-white hover:bg-white/5'}
                                             `}
                                         >
-                                            {item.label}
+                                            {({ isActive }) => (
+                                                <>
+                                                    {isActive && <div className="absolute left-0 w-1.5 h-6 bg-primary rounded-r-full shadow-[4px_0_15px_rgba(255,230,0,0.4)]" />}
+                                                    <Icon size={20} className={`transition-all ${isActive ? 'scale-110 opacity-100' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`} strokeWidth={isActive ? 2.5 : 2} />
+                                                    {item.label}
+                                                </>
+                                            )}
                                         </NavLink>
                                     );
                                 })}

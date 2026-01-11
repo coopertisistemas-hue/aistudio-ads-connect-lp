@@ -19,6 +19,10 @@ import AdminPermissoesPage from './pages/admin/AdminPermissoesPage';
 import AdminIntegracoesPage from './pages/admin/AdminIntegracoesPage';
 import AdminAuditoriaPage from './pages/admin/AdminAuditoriaPage';
 import AdminAjudaPage from './pages/admin/AdminAjudaPage';
+import AdminContratosPage from './pages/admin/AdminContratosPage';
+import AdminMarketingPage from './pages/admin/AdminMarketingPage';
+import AdminCriativosPage from './pages/admin/AdminCriativosPage';
+import AdminInventarioPage from './pages/admin/AdminInventarioPage';
 import AdminPlaceholderPage from './pages/admin/AdminPlaceholderPage';
 import AboutPage from './pages/AboutPage';
 import TermsPage from './pages/TermsPage';
@@ -63,6 +67,10 @@ const App: React.FC = () => {
           <Route path="integracoes" element={<AdminIntegracoesPage />} />
           <Route path="auditoria" element={<AdminAuditoriaPage />} />
           <Route path="ajuda" element={<AdminAjudaPage />} />
+          <Route path="contratos" element={<AdminContratosPage />} />
+          <Route path="marketing" element={<AdminMarketingPage />} />
+          <Route path="criativos" element={<AdminCriativosPage />} />
+          <Route path="inventario" element={<AdminInventarioPage />} />
 
           {/* Legacy & Fallback Redirects */}
           <Route path="ads" element={<Navigate to={ROUTES.ADMIN_ADS} replace />} />
