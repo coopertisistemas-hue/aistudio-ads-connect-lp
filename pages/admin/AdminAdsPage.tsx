@@ -5,10 +5,42 @@ import { adsService } from '../../admin/services/adsService';
 const AdminAdsPage: React.FC = () => {
     const [ads, setAds] = useState<Ad[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newAd, setNewAd] = useState<Partial<Ad>>({
+        name: '',
+        channel: 'google',
+        objective: 'traffic',
+        status: 'draft',
+        dailyBudget: undefined,
+        totalBudget: undefined,
+        startDate: '',
+        endDate: ''
+    });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         loadAds();
     }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isModalOpen) {
+                handleCloseModal();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isModalOpen]);
+
+    useEffect(() => {
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isModalOpen]);
 
     const loadAds = async () => {
         setLoading(true);
@@ -46,6 +78,63 @@ const AdminAdsPage: React.FC = () => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
 
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const validateAd = () => {
+        const newErrors: Record<string, string> = {};
+        if (!newAd.name?.trim()) newErrors.name = 'Nome é obrigatório';
+        if (!newAd.channel) newErrors.channel = 'Canal é obrigatório';
+        if (!newAd.objective) newErrors.objective = 'Objetivo é obrigatório';
+
+        if (!newAd.dailyBudget && !newAd.totalBudget) {
+            newErrors.budget = 'Informe ao menos o Orçamento Diário ou Total';
+        }
+
+        if (newAd.startDate && newAd.endDate) {
+            if (new Date(newAd.endDate) < new Date(newAd.startDate)) {
+                newErrors.endDate = 'Data de término deve ser após a de início';
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleCreateAd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateAd()) {
+            showToast('Verifique os campos obrigatórios.', 'error');
+            return;
+        }
+
+        try {
+            await adsService.createAd(newAd as Omit<Ad, 'id' | 'createdAt'>);
+            showToast('Anúncio criado com sucesso!');
+            handleCloseModal();
+            loadAds();
+        } catch (error) {
+            showToast('Erro ao criar anúncio.', 'error');
+        }
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setNewAd({
+            name: '',
+            channel: 'google',
+            objective: 'traffic',
+            status: 'draft',
+            dailyBudget: undefined,
+            totalBudget: undefined,
+            startDate: '',
+            endDate: ''
+        });
+        setErrors({});
+    };
+
     return (
         <div className="space-y-8 pb-20 animate-fadeIn">
             {/* Header */}
@@ -55,8 +144,8 @@ const AdminAdsPage: React.FC = () => {
                     <p className="text-brandDark/40 font-bold mt-1 tracking-tight">Gerencie seus anúncios e orçamentos entre plataformas.</p>
                 </div>
                 <button
-                    className="bg-brandDark text-white px-8 py-4 rounded-2xl font-black hover:bg-primary hover:text-brandDark transition-all shadow-xl shadow-brandDark/10 active:scale-95 opacity-50 cursor-not-allowed"
-                    disabled
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-brandDark text-white px-8 py-4 rounded-2xl font-black hover:bg-primary hover:text-brandDark transition-all shadow-xl shadow-brandDark/10 active:scale-95"
                 >
                     + Novo Anúncio
                 </button>
@@ -151,6 +240,134 @@ const AdminAdsPage: React.FC = () => {
                     </table>
                 </div>
             </div>
+            {/* New Ad Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-brandDark/20 backdrop-blur-sm" onClick={handleCloseModal}></div>
+                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl relative z-10 overflow-hidden animate-modalIn">
+                        <div className="p-8 border-b border-brandDark/5 flex justify-between items-center bg-[#F8F9FA]">
+                            <div>
+                                <h3 className="text-2xl font-black text-brandDark">Novo Anúncio</h3>
+                                <p className="text-xs font-bold text-brandDark/40 uppercase tracking-widest mt-1">Configuração da Campanha</p>
+                            </div>
+                            <button onClick={handleCloseModal} className="admin-btn-icon">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateAd} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
+                            <div className="grid grid-cols-1 gap-6">
+                                <div>
+                                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Nome da Campanha *</label>
+                                    <input
+                                        type="text"
+                                        value={newAd.name}
+                                        onChange={(e) => setNewAd({ ...newAd, name: e.target.value })}
+                                        className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.name ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                        placeholder="Ex: Campanha Sorriso Perfeito"
+                                    />
+                                    {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 pl-1">{errors.name}</p>}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Canal *</label>
+                                        <select
+                                            value={newAd.channel}
+                                            onChange={(e) => setNewAd({ ...newAd, channel: e.target.value as any })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        >
+                                            <option value="google">Google Ads</option>
+                                            <option value="meta">Meta Ads (FB/IG)</option>
+                                            <option value="tiktok">TikTok Ads</option>
+                                            <option value="x">X (Twitter) Ads</option>
+                                            <option value="other">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Objetivo *</label>
+                                        <select
+                                            value={newAd.objective}
+                                            onChange={(e) => setNewAd({ ...newAd, objective: e.target.value as any })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        >
+                                            <option value="traffic">Tráfego</option>
+                                            <option value="leads">Leads / Cadastro</option>
+                                            <option value="messages">Mensagens (WA)</option>
+                                            <option value="awareness">Reconhecimento</option>
+                                            <option value="sales">Vendas</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Orçamento Diário (R$)</label>
+                                        <input
+                                            type="number"
+                                            value={newAd.dailyBudget || ''}
+                                            onChange={(e) => setNewAd({ ...newAd, dailyBudget: Number(e.target.value) || undefined })}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.budget ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                            placeholder="Ex: 50.00"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Orçamento Total (R$)</label>
+                                        <input
+                                            type="number"
+                                            value={newAd.totalBudget || ''}
+                                            onChange={(e) => setNewAd({ ...newAd, totalBudget: Number(e.target.value) || undefined })}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.budget ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                            placeholder="Ex: 1000.00"
+                                        />
+                                    </div>
+                                </div>
+                                {errors.budget && <p className="text-[10px] font-bold text-red-500 text-center">{errors.budget}</p>}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Início</label>
+                                        <input
+                                            type="date"
+                                            value={newAd.startDate}
+                                            onChange={(e) => setNewAd({ ...newAd, startDate: e.target.value })}
+                                            className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Término</label>
+                                        <input
+                                            type="date"
+                                            value={newAd.endDate}
+                                            onChange={(e) => setNewAd({ ...newAd, endDate: e.target.value })}
+                                            className={`w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 transition-all ${errors.endDate ? 'ring-2 ring-red-500/20' : 'focus:ring-primary/20'}`}
+                                        />
+                                        {errors.endDate && <p className="text-[10px] font-bold text-red-500 mt-1 pl-1">{errors.endDate}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" className="w-full bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10 mt-4">
+                                Criar Campanha
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Toasts */}
+            {toast && (
+                <div className={`fixed bottom-8 right-8 z-[300] py-4 px-8 rounded-2xl font-black text-white shadow-2xl animate-slideInRight ${toast.type === 'success' ? 'bg-brandDark' : 'bg-red-500'}`}>
+                    <div className="flex items-center gap-3">
+                        {toast.type === 'success' ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        )}
+                        {toast.message}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

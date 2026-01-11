@@ -46,14 +46,22 @@ export const adsService = {
         };
     },
 
-    // CRUD stubs for future sprints
     async createAd(ad: Omit<Ad, 'id' | 'createdAt'>): Promise<Ad> {
         const ads = getAds();
+
+        let id: string;
+        try {
+            id = crypto.randomUUID();
+        } catch (e) {
+            id = `ad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        }
+
         const newAd: Ad = {
             ...ad,
-            id: `ad-${Date.now()}`,
+            id,
             createdAt: new Date().toISOString()
         };
+
         ads.push(newAd);
         saveAds(ads);
         return newAd;
