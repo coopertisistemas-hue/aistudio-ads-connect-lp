@@ -26,6 +26,41 @@ const AdminReportsPage: React.FC = () => {
         }
     };
 
+    const handleExportCSV = async (type: 'leads' | 'ads' | 'sites') => {
+        try {
+            const data = await reportsService.getExportData(type, filters);
+            if (data.length === 0) {
+                alert(`Nenhum dado de ${type} encontrado para exportar com os filtros atuais.`);
+                return;
+            }
+
+            // Simple client-side CSV generation
+            const headers = Object.keys(data[0]).join(',');
+            const rows = data.map(item =>
+                Object.values(item).map(val =>
+                    typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val
+                ).join(',')
+            );
+            const csvContent = [headers, ...rows].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', `adsconnect_export_${type}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            alert(`${type.toUpperCase()} exportado com sucesso!`);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Falha ao exportar dados.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -61,134 +96,191 @@ const AdminReportsPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-10 pb-20 animate-fadeIn">
-            <Header filters={filters} setFilters={setFilters} />
+        <div className="space-y-10 pb-20 animate-fadeIn relative">
+            <style>{`
+                @media print {
+                    .no-print, 
+                    aside, 
+                    nav, 
+                    button, 
+                    select,
+                    .admin-header,
+                    .filter-bar { display: none !important; }
+                    .admin-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+                    .admin-card { border: 1px solid #eee !important; box-shadow: none !important; break-inside: avoid; }
+                    body { background: white !important; }
+                    .space-y-10 { gap: 2rem !important; }
+                }
+            `}</style>
 
-            {/* Main KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard label="Total de Leads" value={stats.leads.total} subLabel="Base histórica" icon="leads" />
-                <KPICard label="Leads Útimos 7 Dias" value={stats.leads.last7Days} subLabel="Novos contatos" icon="time" variant="primary" />
-                <KPICard label="Ads Ativos Agora" value={stats.ads.activeNow} subLabel={`De ${stats.ads.total} campanhas`} icon="ads" />
-                <KPICard label="Sites em Operação" value={stats.sites.total} subLabel="LPs publicadas" icon="sites" />
+            <div className="no-print">
+                <Header filters={filters} setFilters={setFilters} />
+
+                {/* Export Actions */}
+                <div className="flex flex-wrap gap-3 mt-8">
+                    <ActionButton onClick={() => handleExportCSV('leads')} label="Exportar Leads" icon="leads" />
+                    <ActionButton onClick={() => handleExportCSV('ads')} label="Exportar Ads" icon="ads" />
+                    <ActionButton onClick={() => handleExportCSV('sites')} label="Exportar Sites" icon="sites" />
+                    <div className="flex-1" />
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-6 py-3 bg-brandDark text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-brandDark/20"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Imprimir Relatório
+                    </button>
+                </div>
             </div>
 
-            {/* Breakdowns */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Leads by Status */}
-                <div className="admin-card p-8">
-                    <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
-                        <div className="w-2 h-6 bg-primary rounded-full" />
-                        Status dos Leads
-                    </h3>
-                    <div className="space-y-4">
-                        {Object.entries(stats.leads.byStatus).map(([status, count]) => (
-                            <div key={status} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
-                                <span className={`text-xs font-black uppercase tracking-widest text-brandDark/60`}>
-                                    {status.replace('_', ' ')}
-                                </span>
-                                <span className="text-lg font-black text-brandDark">{count}</span>
-                            </div>
-                        ))}
-                    </div>
+            <div className="print-area space-y-10">
+                {/* Print Title (Only visible in print) */}
+                <div className="hidden print:block border-b-4 border-primary pb-4 mb-8">
+                    <h1 className="text-4xl font-black text-brandDark">ADS Connect - Relatório Consolidado</h1>
+                    <p className="text-sm font-bold text-brandDark/60 mt-2 italic">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
                 </div>
 
-                {/* Ads by Channel */}
-                <div className="admin-card p-8">
-                    <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
-                        <div className="w-2 h-6 bg-brandDark rounded-full" />
-                        Canais de Anúncios
-                    </h3>
-                    <div className="space-y-4">
-                        {Object.entries(stats.ads.byChannel).map(([channel, count]) => (
-                            <div key={channel} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-brandDark text-white flex items-center justify-center font-black text-[10px] uppercase">
-                                        {channel.slice(0, 1)}
-                                    </div>
-                                    <span className="text-xs font-black uppercase tracking-widest text-brandDark/60">
-                                        {channel}
+                {/* Main KPIs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <KPICard label="Total de Leads" value={stats.leads.total} subLabel="Base histórica" icon="leads" />
+                    <KPICard label="Leads Útimos 7 Dias" value={stats.leads.last7Days} subLabel="Novos contatos" icon="time" variant="primary" />
+                    <KPICard label="Ads Ativos Agora" value={stats.ads.activeNow} subLabel={`De ${stats.ads.total} campanhas`} icon="ads" />
+                    <KPICard label="Sites em Operação" value={stats.sites.total} subLabel="LPs publicadas" icon="sites" />
+                </div>
+
+                {/* Breakdowns */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Leads by Status */}
+                    <div className="admin-card p-8">
+                        <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
+                            <div className="w-2 h-6 bg-primary rounded-full" />
+                            Status dos Leads
+                        </h3>
+                        <div className="space-y-4">
+                            {Object.entries(stats.leads.byStatus).map(([status, count]) => (
+                                <div key={status} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
+                                    <span className={`text-xs font-black uppercase tracking-widest text-brandDark/60`}>
+                                        {status.replace('_', ' ')}
                                     </span>
+                                    <span className="text-lg font-black text-brandDark">{count}</span>
                                 </div>
-                                <span className="text-lg font-black text-brandDark">{count}</span>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Drilldown Tables */}
-            <div className="grid grid-cols-1 gap-8">
-                {/* Recent Leads */}
-                <div className="admin-card overflow-hidden">
-                    <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
-                        <h3 className="text-xl font-black text-brandDark">Leads Recentes (Dentro do Filtro)</h3>
-                        <span className="bg-primary/20 text-brandDark text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.leads.recent.length} listados</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Status</th>
-                                    <th>Data de Criação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.leads.recent.map(lead => (
-                                    <tr key={lead.id}>
-                                        <td className="font-black text-brandDark">{lead.name}</td>
-                                        <td>
-                                            <span className={`status-badge status-${lead.status}`}>
-                                                {lead.status.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td className="text-xs font-bold text-brandDark/40">
-                                            {new Date(lead.createdAt).toLocaleString('pt-BR')}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    {/* Ads by Channel */}
+                    <div className="admin-card p-8">
+                        <h3 className="text-xl font-black text-brandDark mb-6 flex items-center gap-2">
+                            <div className="w-2 h-6 bg-brandDark rounded-full" />
+                            Canais de Anúncios
+                        </h3>
+                        <div className="space-y-4">
+                            {Object.entries(stats.ads.byChannel).map(([channel, count]) => (
+                                <div key={channel} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-brandDark text-white flex items-center justify-center font-black text-[10px] uppercase">
+                                            {channel.slice(0, 1)}
+                                        </div>
+                                        <span className="text-xs font-black uppercase tracking-widest text-brandDark/60">
+                                            {channel}
+                                        </span>
+                                    </div>
+                                    <span className="text-lg font-black text-brandDark">{count}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
-                {/* Recent Ads */}
-                <div className="admin-card overflow-hidden">
-                    <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
-                        <h3 className="text-xl font-black text-brandDark">Campanhas em Destaque</h3>
-                        <span className="bg-brandDark text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.ads.recent.length} listadas</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Campanha</th>
-                                    <th>Canal</th>
-                                    <th>Investimento</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.ads.recent.map(ad => (
-                                    <tr key={ad.id}>
-                                        <td className="font-black text-brandDark">{ad.name}</td>
-                                        <td className="text-xs font-black uppercase tracking-widest text-brandDark/60">{ad.channel}</td>
-                                        <td className="text-sm font-bold text-brandDark/70">
-                                            {ad.dailyBudget ? `R$ ${ad.dailyBudget}/dia` : ad.totalBudget ? `R$ ${ad.totalBudget} total` : '—'}
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge status-${ad.status}`}>
-                                                {ad.status === 'active' ? 'Ativo' : ad.status}
-                                            </span>
-                                        </td>
+                {/* Drilldown Tables */}
+                <div className="grid grid-cols-1 gap-8">
+                    {/* Recent Leads */}
+                    <div className="admin-card overflow-hidden">
+                        <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
+                            <h3 className="text-xl font-black text-brandDark">Leads Recentes (Dentro do Filtro)</h3>
+                            <span className="bg-primary/20 text-brandDark text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.leads.recent.length} listados</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Status</th>
+                                        <th>Data de Criação</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {stats.leads.recent.map(lead => (
+                                        <tr key={lead.id}>
+                                            <td className="font-black text-brandDark">{lead.name}</td>
+                                            <td>
+                                                <span className={`status-badge status-${lead.status}`}>
+                                                    {lead.status.replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="text-xs font-bold text-brandDark/40">
+                                                {new Date(lead.createdAt).toLocaleString('pt-BR')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Recent Ads */}
+                    <div className="admin-card overflow-hidden">
+                        <div className="p-8 border-b border-black/5 flex justify-between items-center bg-[#F8F9FA]/50">
+                            <h3 className="text-xl font-black text-brandDark">Campanhas em Destaque</h3>
+                            <span className="bg-brandDark text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{stats.ads.recent.length} listadas</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Campanha</th>
+                                        <th>Canal</th>
+                                        <th>Investimento</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stats.ads.recent.map(ad => (
+                                        <tr key={ad.id}>
+                                            <td className="font-black text-brandDark">{ad.name}</td>
+                                            <td className="text-xs font-black uppercase tracking-widest text-brandDark/60">{ad.channel}</td>
+                                            <td className="text-sm font-bold text-brandDark/70">
+                                                {ad.dailyBudget ? `R$ ${ad.dailyBudget}/dia` : ad.totalBudget ? `R$ ${ad.totalBudget} total` : '—'}
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge status-${ad.status}`}>
+                                                    {ad.status === 'active' ? 'Ativo' : ad.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    );
+};
+
+const ActionButton: React.FC<{ onClick: () => void, label: string, icon: string }> = ({ onClick, label, icon }) => {
+    return (
+        <button
+            onClick={onClick}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-black/5 text-brandDark/60 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:border-primary/20 hover:text-brandDark transition-all"
+        >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {icon === 'leads' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />}
+                {icon === 'ads' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />}
+                {icon === 'sites' && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />}
+            </svg>
+            {label}
+        </button>
     );
 };
 

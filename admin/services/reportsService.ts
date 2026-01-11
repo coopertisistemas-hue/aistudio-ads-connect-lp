@@ -117,5 +117,33 @@ export const reportsService = {
             ads: adsStats,
             sites: sitesStats
         };
+    },
+
+    async getExportData(type: 'leads' | 'ads' | 'sites', filters: ReportFilters): Promise<any[]> {
+        let data: any[] = [];
+        if (type === 'leads') data = getStoredData<any>(STORAGE_KEYS.LEADS);
+        if (type === 'sites') data = getStoredData<any>(STORAGE_KEYS.SITES);
+        if (type === 'ads') data = getStoredData<any>(STORAGE_KEYS.ADS);
+
+        const now = new Date();
+
+        // 1. Date Filtering
+        if (filters.dateRange !== 'ALL') {
+            const days = parseInt(filters.dateRange);
+            const rangeDate = new Date();
+            rangeDate.setDate(now.getDate() - days);
+            data = data.filter(item => new Date(item.createdAt) >= rangeDate);
+        }
+
+        // 2. Specific Filters
+        if (type === 'leads' && filters.leadStatus && filters.leadStatus !== 'ALL') {
+            data = data.filter(l => l.status === filters.leadStatus);
+        }
+
+        if (type === 'ads' && filters.adChannel && filters.adChannel !== 'ALL') {
+            data = data.filter(a => a.channel === filters.adChannel);
+        }
+
+        return data;
     }
 };
