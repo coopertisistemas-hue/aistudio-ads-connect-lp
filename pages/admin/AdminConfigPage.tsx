@@ -5,11 +5,16 @@ import { toast } from 'sonner';
 
 type ConfigSection = 'org' | 'brand' | 'contact' | 'links';
 
+interface ValidationErrors {
+    [key: string]: string;
+}
+
 const AdminConfigPage: React.FC = () => {
     const [config, setConfig] = useState<OrgConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [editingSection, setEditingSection] = useState<ConfigSection | null>(null);
     const [tempConfig, setTempConfig] = useState<OrgConfig | null>(null);
+    const [errors, setErrors] = useState<ValidationErrors>({});
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -35,7 +40,8 @@ const AdminConfigPage: React.FC = () => {
             }
         }
         setEditingSection(section);
-        setTempConfig(config); // Reset temp to current config
+        setErrors({});
+        setTempConfig(config);
     };
 
     const handleCancel = () => {
@@ -45,58 +51,65 @@ const AdminConfigPage: React.FC = () => {
             }
         }
         setEditingSection(null);
+        setErrors({});
         setTempConfig(config);
     };
 
     const hasChanges = (section: ConfigSection) => {
         if (!config || !tempConfig) return false;
-        return JSON.stringify(config[section === 'org' ? 'orgName' : section]) !==
-            JSON.stringify(tempConfig[section === 'org' ? 'orgName' : section]);
+        // Simple but effective check for these specific keys
+        if (section === 'org') {
+            return config.orgName !== tempConfig.orgName ||
+                config.orgSlug !== tempConfig.orgSlug ||
+                config.timezone !== tempConfig.timezone ||
+                config.currency !== tempConfig.currency;
+        }
+        return JSON.stringify(config[section]) !== JSON.stringify(tempConfig[section]);
     };
 
     const validate = (section: ConfigSection): boolean => {
         if (!tempConfig) return false;
+        const newErrors: ValidationErrors = {};
 
         switch (section) {
             case 'org':
                 if (!tempConfig.orgName || tempConfig.orgName.length < 2) {
-                    toast.error('Nome da organização deve ter pelo menos 2 caracteres.');
-                    return false;
+                    newErrors.orgName = 'O nome deve ter pelo menos 2 caracteres.';
                 }
                 const slugRegex = /^[a-z0-9-]+$/;
                 if (!tempConfig.orgSlug || !slugRegex.test(tempConfig.orgSlug)) {
-                    toast.error('Slug deve conter apenas letras minúsculas, números e hífens.');
-                    return false;
+                    newErrors.orgSlug = 'Slug inválido. Use apenas letras minúsculas, números e hífens.';
                 }
                 break;
             case 'brand':
                 const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
                 if (tempConfig.brand.primaryColor && !hexRegex.test(tempConfig.brand.primaryColor)) {
-                    toast.error('Cor principal deve ser um código Hex válido (ex: #00E08F).');
-                    return false;
+                    newErrors.primaryColor = 'Cor Hex inválida (ex: #00E08F).';
                 }
                 if (tempConfig.brand.logoUrl && !tempConfig.brand.logoUrl.startsWith('http')) {
-                    toast.error('URL do logo deve ser um link válido começando com http/https.');
-                    return false;
+                    newErrors.logoUrl = 'A URL deve começar com http:// ou https://';
                 }
                 break;
             case 'contact':
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (tempConfig.contact.email && !emailRegex.test(tempConfig.contact.email)) {
-                    toast.error('E-mail administrativo inválido.');
-                    return false;
+                    newErrors.email = 'Formato de e-mail inválido.';
                 }
                 break;
             case 'links':
                 if (tempConfig.links.website && !tempConfig.links.website.startsWith('http')) {
-                    toast.error('Website deve ser um link válido.');
-                    return false;
+                    newErrors.website = 'URL do site inválida.';
                 }
                 if (tempConfig.links.privacyPolicy && !tempConfig.links.privacyPolicy.startsWith('http')) {
-                    toast.error('Política de privacidade deve ser um link válido.');
-                    return false;
+                    newErrors.privacyPolicy = 'URL da política inválida.';
                 }
                 break;
+        }
+
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) {
+            toast.error('Por favor, corrija os erros nos campos.');
+            return false;
         }
         return true;
     };
@@ -107,10 +120,15 @@ const AdminConfigPage: React.FC = () => {
         setSaving(true);
         try {
             const dataToUpdate = section === 'org'
-                ? { orgName: tempConfig!.orgName, orgSlug: tempConfig!.orgSlug, timezone: tempConfig!.timezone, currency: tempConfig!.currency }
+                ? {
+                    orgName: tempConfig!.orgName,
+                    orgSlug: tempConfig!.orgSlug,
+                    timezone: tempConfig!.timezone,
+                    currency: tempConfig!.currency
+                }
                 : { [section]: tempConfig![section] };
 
-            const updated = await configService.updateConfig(dataToUpdate);
+            const updated = await configService.updateConfig(dataToUpdate as Partial<OrgConfig>);
             setConfig(updated);
             setTempConfig(updated);
             setEditingSection(null);
@@ -162,8 +180,19 @@ const AdminConfigPage: React.FC = () => {
                 >
                     {editingSection === 'org' ? (
                         <div className="space-y-4">
-                            <Input label="Nome da Organização" value={tempConfig.orgName} onChange={val => setTempConfig({ ...tempConfig, orgName: val })} />
-                            <Input label="Slug (Identificador)" value={tempConfig.orgSlug} onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/\s+/g, '-') })} />
+                            <Input
+                                label="Nome da Organização"
+                                value={tempConfig.orgName}
+                                onChange={val => setTempConfig({ ...tempConfig, orgName: val })}
+                                error={errors.orgName}
+                            />
+                            <Input
+                                label="Slug (Identificador)"
+                                value={tempConfig.orgSlug}
+                                onChange={val => setTempConfig({ ...tempConfig, orgSlug: val.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                                error={errors.orgSlug}
+                                helper="Apenas letras, números e hífens."
+                            />
                             <div className="grid grid-cols-2 gap-4">
                                 <Select
                                     label="Fuso Horário"
@@ -173,10 +202,16 @@ const AdminConfigPage: React.FC = () => {
                                         { label: 'Brasília (GMT-3)', value: 'America/Sao_Paulo' },
                                         { label: 'Amazonas (GMT-4)', value: 'America/Manaus' },
                                         { label: 'Fernando de Noronha (GMT-2)', value: 'America/Noronha' },
-                                        { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' }
+                                        { label: 'Acre (GMT-5)', value: 'America/Rio_Branco' },
+                                        { label: 'Londres (GMT+0)', value: 'Europe/London' },
+                                        { label: 'Nova York (GMT-5)', value: 'America/New_York' }
                                     ]}
                                 />
-                                <Input label="Moeda" value={tempConfig.currency} onChange={val => setTempConfig({ ...tempConfig, currency: val })} />
+                                <Input
+                                    label="Moeda"
+                                    value={tempConfig.currency}
+                                    onChange={val => setTempConfig({ ...tempConfig, currency: val })}
+                                />
                             </div>
                         </div>
                     ) : (
@@ -206,11 +241,23 @@ const AdminConfigPage: React.FC = () => {
                         <div className="space-y-4">
                             <div className="flex gap-4 items-end">
                                 <div className="flex-1">
-                                    <Input label="Cor Principal (Hex)" value={tempConfig.brand.primaryColor || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })} placeholder="#00E08F" />
+                                    <Input
+                                        label="Cor Principal (Hex)"
+                                        value={tempConfig.brand.primaryColor || ''}
+                                        onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, primaryColor: val } })}
+                                        placeholder="#00E08F"
+                                        error={errors.primaryColor}
+                                    />
                                 </div>
-                                <div className="w-10 h-10 rounded-xl mb-1 shadow-inner" style={{ backgroundColor: tempConfig.brand.primaryColor || '#eee' }} />
+                                <div className="w-10 h-10 rounded-xl mb-1 shadow-inner border border-black/5" style={{ backgroundColor: tempConfig.brand.primaryColor || '#eee' }} />
                             </div>
-                            <Input label="Link do Logo (SVG/PNG)" value={tempConfig.brand.logoUrl || ''} onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })} placeholder="https://..." />
+                            <Input
+                                label="Link do Logo (SVG/PNG)"
+                                value={tempConfig.brand.logoUrl || ''}
+                                onChange={val => setTempConfig({ ...tempConfig, brand: { ...tempConfig.brand, logoUrl: val } })}
+                                placeholder="https://..."
+                                error={errors.logoUrl}
+                            />
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -218,7 +265,7 @@ const AdminConfigPage: React.FC = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/40">Cor Principal</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold text-brandDark">{config.brand.primaryColor}</span>
-                                    <div className="w-6 h-6 rounded-lg shadow-inner" style={{ backgroundColor: config.brand.primaryColor }} />
+                                    <div className="w-6 h-6 rounded-lg shadow-inner border border-black/5" style={{ backgroundColor: config.brand.primaryColor }} />
                                 </div>
                             </div>
                             <InfoRow label="Link do Logo" value={config.brand.logoUrl || "Não configurado"} isLink={!!config.brand.logoUrl} />
@@ -239,8 +286,20 @@ const AdminConfigPage: React.FC = () => {
                 >
                     {editingSection === 'contact' ? (
                         <div className="space-y-4">
-                            <Input label="E-mail Administrativo" value={tempConfig.contact.email || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })} placeholder="contato@empresa.com" />
-                            <Input label="WhatsApp de Suporte" value={tempConfig.contact.whatsapp || ''} onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val } })} placeholder="+55..." />
+                            <Input
+                                label="E-mail Administrativo"
+                                value={tempConfig.contact.email || ''}
+                                onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, email: val } })}
+                                placeholder="contato@empresa.com"
+                                error={errors.email}
+                            />
+                            <Input
+                                label="WhatsApp de Suporte"
+                                value={tempConfig.contact.whatsapp || ''}
+                                onChange={val => setTempConfig({ ...tempConfig, contact: { ...tempConfig.contact, whatsapp: val.replace(/[^0-9+]/g, '') } })}
+                                placeholder="+5511999999999"
+                                helper="Apenas números e +"
+                            />
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -277,8 +336,20 @@ const AdminConfigPage: React.FC = () => {
                 >
                     {editingSection === 'links' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Input label="Website Oficial" value={tempConfig.links.website || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })} placeholder="https://..." />
-                            <Input label="Política de Privacidade" value={tempConfig.links.privacyPolicy || ''} onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })} placeholder="https://..." />
+                            <Input
+                                label="Website Oficial"
+                                value={tempConfig.links.website || ''}
+                                onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, website: val } })}
+                                placeholder="https://..."
+                                error={errors.website}
+                            />
+                            <Input
+                                label="Política de Privacidade"
+                                value={tempConfig.links.privacyPolicy || ''}
+                                onChange={val => setTempConfig({ ...tempConfig, links: { ...tempConfig.links, privacyPolicy: val } })}
+                                placeholder="https://..."
+                                error={errors.privacyPolicy}
+                            />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -365,7 +436,14 @@ const InfoRow: React.FC<{ label: string, value: string, isLink?: boolean }> = ({
     </div>
 );
 
-const Input: React.FC<{ label: string, value: string, onChange: (val: string) => void, placeholder?: string }> = ({ label, value, onChange, placeholder }) => (
+const Input: React.FC<{
+    label: string,
+    value: string,
+    onChange: (val: string) => void,
+    placeholder?: string,
+    error?: string,
+    helper?: string
+}> = ({ label, value, onChange, placeholder, error, helper }) => (
     <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-black uppercase tracking-widest text-brandDark/40 pl-1">{label}</label>
         <input
@@ -373,8 +451,13 @@ const Input: React.FC<{ label: string, value: string, onChange: (val: string) =>
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-[#F8F9FA] border border-black/5 rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-brandDark/20"
+            className={`w-full bg-[#F8F9FA] border ${error ? 'border-red-500' : 'border-black/5'} rounded-xl px-4 py-2.5 text-xs font-bold text-brandDark focus:ring-2 ${error ? 'focus:ring-red-100' : 'focus:ring-primary/20'} outline-none transition-all placeholder:text-brandDark/20`}
         />
+        {error ? (
+            <span className="text-[9px] font-bold text-red-500 pl-1">{error}</span>
+        ) : helper ? (
+            <span className="text-[9px] font-bold text-brandDark/20 pl-1">{helper}</span>
+        ) : null}
     </div>
 );
 
