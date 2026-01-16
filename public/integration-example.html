@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemplo de Integração - ADS Connect SDK</title>
+    
+    <!-- ADS Connect SDK -->
+    <script src="/ads-connect-sdk.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .ad-container {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        
+        .ad-container img {
+            max-width: 100%;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .ad-container img:hover {
+            transform: scale(1.05);
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Exemplo de Integração - ADS Connect</h1>
+    
+    <div class="status" id="status">
+        Inicializando SDK...
+    </div>
+    
+    <!-- Slot de Anúncio Header -->
+    <div id="ad-slot-header" class="ad-container">
+        <p>Carregando anúncio...</p>
+    </div>
+    
+    <h2>Conteúdo do Site</h2>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
+    
+    <!-- Slot de Anúncio Sidebar -->
+    <div id="ad-slot-sidebar" class="ad-container">
+        <p>Carregando anúncio...</p>
+    </div>
+    
+    <script>
+        // ========================================================================
+        // CONFIGURAÇÃO
+        // ========================================================================
+        
+        const CONFIG = {
+            siteId: 'SEU-SITE-UUID-AQUI',
+            apiKey: 'SUA-API-KEY-AQUI',
+            supabaseUrl: 'https://hwugnqevkeymqoahnwfb.supabase.co',
+            debug: true, // Ativar logs de debug
+        };
+        
+        // ========================================================================
+        // 1. INICIALIZAR SDK
+        // ========================================================================
+        
+        try {
+            ADSConnect.init(CONFIG);
+            updateStatus('✅ SDK inicializado com sucesso!');
+        } catch (error) {
+            updateStatus('❌ Erro ao inicializar SDK: ' + error.message);
+            console.error(error);
+        }
+        
+        // ========================================================================
+        // 2. BUSCAR ANÚNCIOS
+        // ========================================================================
+        
+        async function fetchAd(slotPosition) {
+            try {
+                const response = await fetch(`${CONFIG.supabaseUrl}/functions/v1/serve-ad-optimized`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Site-Key': CONFIG.apiKey,
+                    },
+                    body: JSON.stringify({
+                        site_id: CONFIG.siteId,
+                        slot_position: slotPosition,
+                        user_context: {
+                            device: ADSConnect.detectDevice(),
+                        },
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.ad) {
+                    return data.ad;
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Erro ao buscar anúncio:', error);
+                return null;
+            }
+        }
+        
+        // ========================================================================
+        // 3. RENDERIZAR ANÚNCIO
+        // ========================================================================
+        
+        function renderAd(containerId, ad) {
+            const container = document.getElementById(containerId);
+            
+            if (!ad) {
+                container.innerHTML = '<p style="color: #999;">Nenhum anúncio disponível</p>';
+                return;
+            }
+            
+            // Criar elemento de imagem
+            const img = document.createElement('img');
+            img.src = ad.creative.url;
+            img.alt = 'Anúncio';
+            img.width = ad.creative.width;
+            img.height = ad.creative.height;
+            
+            // Limpar container e adicionar imagem
+            container.innerHTML = '';
+            container.appendChild(img);
+            
+            // ====================================================================
+            // 4. TRACKING DE IMPRESSÃO VIEWABLE
+            // ====================================================================
+            
+            const tracker = new ViewableImpressionTracker(container, {
+                adId: ad.id,
+                slotId: containerId, // Usar ID do container como slot_id
+            });
+            
+            updateStatus(`📊 Tracking de impressão configurado para ${containerId}`);
+            
+            // ====================================================================
+            // 5. TRACKING DE CLIQUE
+            // ====================================================================
+            
+            const clickTracker = new ClickTracker();
+            
+            img.addEventListener('click', async (event) => {
+                await clickTracker.handleClick(event, {
+                    adId: ad.id,
+                    impressionId: tracker.getImpressionId(),
+                    slotId: containerId,
+                    fallbackUrl: ad.click_url, // URL de fallback
+                });
+            });
+            
+            updateStatus(`🖱️ Tracking de clique configurado para ${containerId}`);
+        }
+        
+        // ========================================================================
+        // 6. CARREGAR ANÚNCIOS
+        // ========================================================================
+        
+        async function loadAds() {
+            updateStatus('🔄 Carregando anúncios...');
+            
+            // Carregar anúncio do header
+            const headerAd = await fetchAd('header');
+            renderAd('ad-slot-header', headerAd);
+            
+            // Carregar anúncio da sidebar
+            const sidebarAd = await fetchAd('sidebar');
+            renderAd('ad-slot-sidebar', sidebarAd);
+            
+            updateStatus('✅ Anúncios carregados e tracking configurado!');
+        }
+        
+        // ========================================================================
+        // HELPERS
+        // ========================================================================
+        
+        function updateStatus(message) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            console.log(message);
+        }
+        
+        // ========================================================================
+        // INICIAR
+        // ========================================================================
+        
+        // Carregar anúncios quando a página estiver pronta
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAds);
+        } else {
+            loadAds();
+        }
+    </script>
+</body>
+</html>

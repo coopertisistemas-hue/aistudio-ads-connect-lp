@@ -47,7 +47,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
                     {primaryAction && (
                         <button
                             onClick={primaryAction.onClick}
-                            className="bg-primary text-brandDark px-10 py-5 rounded-[20px] font-black hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 transition-all active:scale-95 whitespace-nowrap text-sm uppercase tracking-widest"
+                            className="bg-primary text-brandDark px-12 py-5 rounded-[24px] font-black hover:scale-[1.02] hover:shadow-[0_20px_40px_-10px_rgba(31,219,100,0.4)] transition-all active:scale-95 whitespace-nowrap text-xs uppercase tracking-[0.2em] border-2 border-primary"
                         >
                             {primaryAction.label}
                         </button>

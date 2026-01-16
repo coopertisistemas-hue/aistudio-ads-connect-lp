@@ -1,367 +1,473 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Globe } from 'lucide-react';
-import { Site, SiteStatus, PaginatedSites } from '../../admin/types/Site';
-import { sitesService } from '../../admin/services/sitesService';
-import { trackEvent } from '../../lib/tracking';
+import { useState, useEffect } from 'react';
+import { Plus, Search, ExternalLink, Key, CheckCircle, XCircle } from 'lucide-react';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminStatusBadge from '@/components/admin/AdminStatusBadge';
+import AdminEmptyState from '@/components/admin/AdminEmptyState';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useDebounce } from '../../hooks/useDebounce';
-import AdminHeader from '../../components/admin/AdminHeader';
-import AdminStatusBadge from '../../components/admin/AdminStatusBadge';
-import AdminEmptyState from '../../components/admin/AdminEmptyState';
-import { AdminTable, FilterBar, AdminModal, AdminDrawer } from '../../components/admin/AdminUI';
 
-const AdminSitesPage: React.FC = () => {
-    const [sites, setSites] = useState<Site[]>([]);
-    const [total, setTotal] = useState(0);
+export default function AdminSitesPage() {
+    const [sites, setSites] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingSite, setEditingSite] = useState<Site | null>(null);
-
-    // Filter state
-    const [search, setSearch] = useState('');
-    const [status, setStatus] = useState<SiteStatus | ''>('');
-    const [segment, setSegment] = useState('');
-    const [city, setCity] = useState('');
-
-    const debouncedSearch = useDebounce(search, 400);
-
-    const filters = useMemo(() => ({
-        search: debouncedSearch,
-        status: status || undefined,
-        segment: segment || undefined,
-        city: city || undefined,
-        page: 1,
-        pageSize: 50
-    }), [debouncedSearch, status, segment, city]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [showModal, setShowModal] = useState(false);
+    const [selectedSite, setSelectedSite] = useState(null);
 
     useEffect(() => {
         loadSites();
-    }, [filters]);
+    }, []);
 
-    const loadSites = async () => {
-        setLoading(true);
+    async function loadSites() {
         try {
-            const result = await sitesService.listSites(filters);
-            setSites(result.data);
-            setTotal(result.total);
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('partner_sites')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setSites(data || []);
         } catch (error) {
-            toast.error('Erro ao carregar sites');
+            console.error('Erro ao carregar sites:', error);
+            toast.error('Erro ao carregar sites parceiros');
         } finally {
             setLoading(false);
         }
-    };
+    }
 
-    const handleDeleteSite = async (id: string, name: string) => {
-        if (window.confirm(`Tem certeza que deseja excluir o site "${name}"?`)) {
-            try {
-                await sitesService.deleteSite(id);
-                toast.success('Site excluído com sucesso');
-                loadSites();
-                if (editingSite?.id === id) setEditingSite(null);
-            } catch (error) {
-                toast.error('Erro ao excluir site');
+    async function handleCreateSite(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        try {
+            const { data, error } = await supabase
+                .from('partner_sites')
+                .insert([{
+                    slug: formData.get('slug') as string,
+                    name: formData.get('name') as string,
+                    domain: formData.get('domain') as string,
+                    homepage_url: formData.get('homepage_url') as string,
+                    category: formData.get('category') as string,
+                    site_type: formData.get('site_type') as string,
+                    country: 'BR',
+                    primary_language: 'pt-BR',
+                    status: 'pending',
+                    approval_status: 'pending',
+                    revenue_share_percentage: parseFloat((formData.get('revenue_share_percentage') as string) || '70'),
+                    owner_email: formData.get('owner_email') as string,
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            toast.success('Site parceiro criado com sucesso!');
+            setShowModal(false);
+            loadSites();
+
+            if (data.api_key_hash) {
+                toast.success(`API Key: ${data.api_key_hash.substring(0, 20)}...`, {
+                    duration: 10000,
+                });
             }
+        } catch (error) {
+            console.error('Erro ao criar site:', error);
+            toast.error('Erro ao criar site parceiro');
         }
-    };
+    }
 
-    return (
-        <div className="space-y-8 pb-20">
-            <AdminHeader
-                title="Sites"
-                description="Gerencie seus sites e presença digital"
-                kpis={[{ label: 'Sites Ativos', value: total }]}
-                primaryAction={{
-                    label: '+ Novo Site',
-                    onClick: () => setIsCreateModalOpen(true)
-                }}
-            />
+    async function handleApprove(siteId) {
+        try {
+            const { error } = await supabase
+                .from('partner_sites')
+                .update({
+                    status: 'active',
+                    approval_status: 'approved',
+                })
+                .eq('id', siteId);
 
-            <FilterBar>
-                <div className="flex-1 min-w-[200px] relative">
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome, URL ou cliente..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark placeholder:text-brandDark/20 focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-                <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as SiteStatus)}
-                    className="bg-[#F8F9FA] border-0 rounded-xl px-4 py-3 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 cursor-pointer"
-                >
-                    <option value="">Todos os Status</option>
-                    <option value={SiteStatus.PUBLISHED}>Publicado</option>
-                    <option value={SiteStatus.DRAFT}>Rascunho</option>
-                    <option value={SiteStatus.PAUSED}>Pausado</option>
-                </select>
-                {(search || status || segment || city) && (
-                    <button
-                        onClick={() => {
-                            setSearch('');
-                            setStatus('');
-                            setSegment('');
-                            setCity('');
-                        }}
-                        className="text-[10px] font-black uppercase tracking-widest text-brandDark/30 hover:text-primary transition-colors px-2"
-                    >
-                        Limpar
-                    </button>
-                )}
-            </FilterBar>
+            if (error) throw error;
 
-            <AdminTable loading={loading}>
-                <thead>
-                    <tr>
-                        <th>Site / URL</th>
-                        <th>Proprietário</th>
-                        <th>Segmento</th>
-                        <th className="text-center">Status</th>
-                        <th className="text-right">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sites.map((site) => (
-                        <tr key={site.id} className="group hover:bg-[#F8F9FA] transition-colors">
-                            <td>
-                                <p className="font-black text-brandDark leading-tight">{site.name}</p>
-                                <p className="text-[10px] font-bold text-brandDark/40 tracking-tight lowercase">{site.domain || `${site.slug}.adsconnect.site`}</p>
-                            </td>
-                            <td>
-                                <p className="text-sm font-bold text-brandDark/70">{site.ownerEmail || '—'}</p>
-                            </td>
-                            <td>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-brandDark/50">{site.segment || '—'}</span>
-                            </td>
-                            <td className="text-center">
-                                <AdminStatusBadge status={site.status} />
-                            </td>
-                            <td className="text-right">
-                                <button
-                                    onClick={() => setEditingSite(site)}
-                                    className="bg-brandDark/5 px-4 py-2 rounded-lg text-brandDark font-black text-[10px] uppercase tracking-widest hover:bg-brandDark hover:text-white transition-all"
-                                >
-                                    Gerenciar
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                    {sites.length === 0 && !loading && (
-                        <tr>
-                            <td colSpan={5}>
-                                <AdminEmptyState
-                                    title="Nenhum site encontrado"
-                                    description="Você ainda não tem sites criados ou os filtros aplicados não retornaram resultados."
-                                    icon={Globe}
-                                    action={{
-                                        label: "Novo Site",
-                                        onClick: () => setIsCreateModalOpen(true)
-                                    }}
-                                    onClearFilters={search || status || segment || city ? () => {
-                                        setSearch('');
-                                        setStatus('');
-                                        setSegment('');
-                                        setCity('');
-                                    } : undefined}
-                                />
-                            </td>
-                        </tr>
-                    )}
-                </tbody>
-            </AdminTable>
+            toast.success('Site aprovado com sucesso!');
+            loadSites();
+        } catch (error) {
+            console.error('Erro ao aprovar site:', error);
+            toast.error('Erro ao aprovar site');
+        }
+    }
 
-            <AdminModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Novo Site"
-            >
-                <SiteForm
-                    onSuccess={() => {
-                        setIsCreateModalOpen(false);
-                        loadSites();
-                    }}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </AdminModal>
-
-            <AdminDrawer
-                isOpen={!!editingSite}
-                onClose={() => setEditingSite(null)}
-                title={editingSite?.name || ''}
-                subtitle={editingSite?.domain || `${editingSite?.slug}.adsconnect.site`}
-                actions={
-                    editingSite && (
-                        <button
-                            onClick={() => handleDeleteSite(editingSite.id, editingSite.name)}
-                            className="admin-btn-icon text-red-500 hover:bg-red-50"
-                            title="Excluir Site"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    )
-                }
-            >
-                {editingSite && (
-                    <SiteForm
-                        initialData={editingSite}
-                        onSuccess={() => {
-                            setEditingSite(null);
-                            loadSites();
-                        }}
-                        onCancel={() => setEditingSite(null)}
-                    />
-                )}
-            </AdminDrawer>
-        </div>
-    );
-};
-
-// --- SITE FORM COMPONENT ---
-
-interface SiteFormProps {
-    initialData?: Site;
-    onSuccess: () => void;
-    onCancel: () => void;
-}
-
-const SiteForm: React.FC<SiteFormProps> = ({ initialData, onSuccess, onCancel }) => {
-    const isEditing = !!initialData;
-    const [formData, setFormData] = useState({
-        name: initialData?.name || '',
-        slug: initialData?.slug || '',
-        ownerEmail: initialData?.ownerEmail || '',
-        segment: initialData?.segment || '',
-        city: initialData?.city || '',
-        domain: initialData?.domain || '',
-        status: initialData?.status || SiteStatus.DRAFT
+    const filteredSites = sites.filter(site => {
+        const matchesSearch = site.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            site.domain.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' || site.status === statusFilter;
+        return matchesSearch && matchesStatus;
     });
 
-    const [loading, setLoading] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-
-        try {
-            if (isEditing) {
-                await sitesService.updateSite(initialData.id, formData);
-                toast.success('Site atualizado com sucesso');
-            } else {
-                await sitesService.createSite(formData);
-                toast.success('Site criado com sucesso');
-            }
-            onSuccess();
-        } catch (error) {
-            toast.error('Erro ao salvar site');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Nome do Site *</label>
-                    <input
-                        required
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">ID (Slug) *</label>
-                    <div className="flex gap-2">
+        <div className="min-h-screen bg-gray-50">
+            <AdminHeader
+                title="Sites Parceiros"
+                subtitle="Gerencie sites parceiros e suas API keys"
+                actions={[
+                    {
+                        label: 'Novo Site',
+                        icon: Plus,
+                        onClick: () => setShowModal(true),
+                        variant: 'primary',
+                    },
+                ]}
+            />
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Filtros */}
+                <div className="mb-6 flex gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
-                            required
                             type="text"
-                            value={formData.slug}
-                            onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
-                            placeholder="meusite"
-                            className="flex-1 bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
+                            placeholder="Buscar por nome ou domínio..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         />
-                        <span className="self-center text-[10px] font-black text-brandDark/20 uppercase">.ads.connect</span>
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                        <option value="all">Todos os Status</option>
+                        <option value="active">Ativo</option>
+                        <option value="pending">Pendente</option>
+                        <option value="suspended">Suspenso</option>
+                    </select>
+                </div>
+
+                {/* Tabela */}
+                {loading ? (
+                    <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                    </div>
+                ) : filteredSites.length === 0 ? (
+                    <AdminEmptyState
+                        icon={ExternalLink}
+                        title="Nenhum site parceiro"
+                        description="Comece adicionando seu primeiro site parceiro"
+                        action={{
+                            label: 'Adicionar Site',
+                            onClick: () => setShowModal(true),
+                        }}
+                    />
+                ) : (
+                    <div className="bg-white shadow rounded-lg overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Site
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Categoria
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        API Key
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Métricas
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Ações
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {filteredSites.map((site) => (
+                                    <tr key={site.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="font-medium text-gray-900">{site.name}</div>
+                                            <div className="text-sm text-gray-500">{site.domain}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm text-gray-600 capitalize">{site.category}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col gap-1">
+                                                <AdminStatusBadge status={site.status} />
+                                                <AdminStatusBadge
+                                                    status={site.approval_status}
+                                                    variant={site.approval_status === 'approved' ? 'success' : 'warning'}
+                                                />
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-2">
+                                                {site.api_key_hash ? (
+                                                    <>
+                                                        <CheckCircle className="w-4 h-4 text-green-600" />
+                                                        <span className="text-xs text-gray-500 font-mono">
+                                                            {site.api_key_hash.substring(0, 12)}...
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <XCircle className="w-4 h-4 text-red-600" />
+                                                        <span className="text-xs text-gray-500">Sem API Key</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            <div>{site.total_impressions?.toLocaleString() || 0} impressões</div>
+                                            <div>{site.total_clicks?.toLocaleString() || 0} cliques</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            {site.approval_status === 'pending' && (
+                                                <button
+                                                    onClick={() => handleApprove(site.id)}
+                                                    className="text-green-600 hover:text-green-900 mr-4"
+                                                >
+                                                    Aprovar
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setSelectedSite(site)}
+                                                className="text-blue-600 hover:text-blue-900"
+                                            >
+                                                Ver Detalhes
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Modal de Criação */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Novo Site Parceiro</h2>
+                        <form onSubmit={handleCreateSite} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Nome do Site *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    placeholder="Meu Blog de Tecnologia"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Slug (URL-friendly) *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="slug"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    placeholder="meu-blog-tech"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Domínio *
+                                </label>
+                                <input
+                                    type="text"
+                                    name="domain"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    placeholder="meublog.com.br"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    URL Homepage *
+                                </label>
+                                <input
+                                    type="url"
+                                    name="homepage_url"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    placeholder="https://meublog.com.br"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Categoria *
+                                    </label>
+                                    <select
+                                        name="category"
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="technology">Tecnologia</option>
+                                        <option value="news">Notícias</option>
+                                        <option value="blog">Blog</option>
+                                        <option value="ecommerce">E-commerce</option>
+                                        <option value="entertainment">Entretenimento</option>
+                                        <option value="education">Educação</option>
+                                        <option value="sports">Esportes</option>
+                                        <option value="finance">Finanças</option>
+                                        <option value="health">Saúde</option>
+                                        <option value="lifestyle">Estilo de Vida</option>
+                                        <option value="other">Outro</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tipo de Site *
+                                    </label>
+                                    <select
+                                        name="site_type"
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="blog">Blog</option>
+                                        <option value="news_portal">Portal de Notícias</option>
+                                        <option value="ecommerce">E-commerce</option>
+                                        <option value="corporate">Corporativo</option>
+                                        <option value="community">Comunidade</option>
+                                        <option value="forum">Fórum</option>
+                                        <option value="video_platform">Plataforma de Vídeo</option>
+                                        <option value="other">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Email do Proprietário *
+                                </label>
+                                <input
+                                    type="email"
+                                    name="owner_email"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                    placeholder="contato@meublog.com.br"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Revenue Share (%) *
+                                </label>
+                                <input
+                                    type="number"
+                                    name="revenue_share_percentage"
+                                    min="0"
+                                    max="100"
+                                    defaultValue="70"
+                                    required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                >
+                                    Criar Site
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">E-mail do Proprietário</label>
-                    <input
-                        type="email"
-                        value={formData.ownerEmail}
-                        onChange={(e) => setFormData({ ...formData, ownerEmail: e.target.value })}
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Domínio Próprio</label>
-                    <input
-                        type="text"
-                        value={formData.domain}
-                        onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                        placeholder="exemplo.com.br"
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-            </div>
+            {/* Detalhes do Site */}
+            {selectedSite && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-4">Detalhes do Site</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 mb-2">Informações Básicas</h3>
+                                <dl className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Nome:</dt>
+                                        <dd className="text-sm font-medium text-gray-900">{selectedSite.name}</dd>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Domínio:</dt>
+                                        <dd className="text-sm font-medium text-gray-900">{selectedSite.domain}</dd>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Categoria:</dt>
+                                        <dd className="text-sm font-medium text-gray-900 capitalize">{selectedSite.category}</dd>
+                                    </div>
+                                </dl>
+                            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Segmento</label>
-                    <input
-                        type="text"
-                        value={formData.segment}
-                        onChange={(e) => setFormData({ ...formData, segment: e.target.value })}
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-                <div>
-                    <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Cidade</label>
-                    <input
-                        type="text"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                </div>
-            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 mb-2">API Key</h3>
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <code className="text-xs font-mono text-gray-800 break-all">
+                                        {selectedSite.api_key_hash || 'Não gerada'}
+                                    </code>
+                                </div>
+                            </div>
 
-            <div>
-                <label className="block text-brandDark/40 text-[10px] font-black uppercase tracking-widest mb-2 pl-1">Status</label>
-                <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as SiteStatus })}
-                    className="w-full bg-[#F8F9FA] border-0 rounded-xl p-4 text-sm font-bold text-brandDark focus:ring-2 focus:ring-primary/20 transition-all"
-                >
-                    <option value={SiteStatus.PUBLISHED}>Publicado</option>
-                    <option value={SiteStatus.DRAFT}>Rascunho</option>
-                    <option value={SiteStatus.PAUSED}>Pausado</option>
-                </select>
-            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500 mb-2">Métricas</h3>
+                                <dl className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Impressões:</dt>
+                                        <dd className="text-sm font-medium text-gray-900">
+                                            {selectedSite.total_impressions?.toLocaleString() || 0}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Cliques:</dt>
+                                        <dd className="text-sm font-medium text-gray-900">
+                                            {selectedSite.total_clicks?.toLocaleString() || 0}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <dt className="text-sm text-gray-600">Revenue:</dt>
+                                        <dd className="text-sm font-medium text-gray-900">
+                                            R$ {selectedSite.total_revenue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
 
-            <div className="flex gap-4 pt-4">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="flex-1 border-2 border-brandDark/5 text-brandDark py-5 rounded-2xl font-black transition-all hover:bg-brandDark/5"
-                >
-                    Cancelar
-                </button>
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-[2] bg-brandDark text-white py-5 rounded-2xl font-black text-lg hover:bg-primary hover:text-brandDark transition-all active:scale-95 shadow-xl shadow-brandDark/10 disabled:opacity-50"
-                >
-                    {loading ? 'Salvando...' : (isEditing ? 'Atualizar Site' : 'Criar Site')}
-                </button>
-            </div>
-        </form>
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => setSelectedSite(null)}
+                                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
-};
-
-export default AdminSitesPage;
+}

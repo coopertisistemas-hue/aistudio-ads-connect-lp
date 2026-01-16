@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "esnext",
+        "lib": [
+            "esnext",
+            "dom"
+        ],
+        "moduleResolution": "node",
+        "allowJs": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "noEmit": true,
+        "types": [
+            "./deno.d.ts"
+        ]
+    },
+    "include": [
+        "**/*.ts",
+        "deno.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

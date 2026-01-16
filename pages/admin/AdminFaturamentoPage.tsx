@@ -1,44 +1,21 @@
 import React from 'react';
+import { FileText } from 'lucide-react';
 import AdminHeader from '../../components/admin/AdminHeader';
+import AdminEmptyState from '../../components/admin/AdminEmptyState';
 
 const AdminFaturamentoPage: React.FC = () => {
     return (
-        <div className="space-y-10">
+        <div className="space-y-8">
             <AdminHeader
-                title="Faturamento"
-                description="Painel financeiro consolidado e histórico de cobranças."
+                title="Faturamento & Invoices"
+                description="Gestão de faturas, pagamentos e emissão de NF-e."
             />
-
-            <div className="admin-card p-10 max-w-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                    <span className="bg-primary/20 text-primary px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20">
-                        Em breve
-                    </span>
-                    <span className="text-brandDark/40 text-[10px] font-bold uppercase tracking-widest">
-                        Fase 2: Supabase
-                    </span>
-                </div>
-
-                <h3 className="text-2xl font-black text-brandDark mb-6">
-                    O que este módulo permitirá:
-                </h3>
-
-                <ul className="space-y-4 mb-10">
-                    {[
-                        'Emissão automática de notas fiscais e recibos',
-                        'Conciliação bancária simplificada para grandes volumes',
-                        'Histórico financeiro consolidado com filtros avançados'
-                    ].map((item, i) => (
-                        <li key={i} className="flex items-start gap-3 text-brandDark/60 font-medium">
-                            <span className="text-primary mt-1">✦</span>
-                            {item}
-                        </li>
-                    ))}
-                </ul>
-
-                <p className="text-sm font-bold text-brandDark/30 italic">
-                    Controle financeiro rigoroso e automatizado para sua escala.
-                </p>
+            <div className="admin-card">
+                <AdminEmptyState
+                    title="Nenhuma fatura emitida"
+                    description="Faturas e pagamentos aparecerão aqui quando processados."
+                    icon={FileText}
+                />
             </div>
         </div>
     );

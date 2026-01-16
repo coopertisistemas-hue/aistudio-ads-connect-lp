@@ -1,15 +1,24 @@
 :root {
     --admin-primary: #1FDB64;
     --admin-brand-dark: #0D1117;
-    --admin-bg: #F0F2F5;
+    --admin-bg: #F8F9FA;
     --admin-surface: #FFFFFF;
-    --admin-border: rgba(13, 17, 23, 0.05);
+    --admin-border: rgba(13, 17, 23, 0.06);
     --admin-text-main: #0D1117;
-    --admin-text-secondary: rgba(13, 17, 23, 0.4);
+    --admin-text-secondary: rgba(13, 17, 23, 0.45);
     --admin-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
-    --admin-shadow-md: 0 10px 40px -10px rgba(13, 17, 23, 0.06);
-    --admin-shadow-lg: 0 30px 60px -12px rgba(13, 17, 23, 0.12);
+    --admin-shadow-md: 0 12px 40px -10px rgba(13, 17, 23, 0.08);
+    --admin-shadow-lg: 0 30px 60px -12px rgba(13, 17, 23, 0.15);
     --admin-radius: 32px;
+
+    /* Stitch Light Sidebar Palette */
+    --admin-sidebar-bg: #FFFFFF;
+    --admin-sidebar-border: #EEF2F2;
+    --admin-sidebar-text: #3A5F5B;
+    --admin-sidebar-text-muted: #7FA9A4;
+    --admin-sidebar-primary: #0B4F4A;
+    --admin-sidebar-hover: #F1FAF8;
+    --admin-sidebar-active: #E6F4F1;
 }
 
 /* Admin Specific Styles */
@@ -179,10 +188,14 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(159, 216, 207, 0.15);
     border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--admin-primary);
+    background: var(--admin-accent);
+}
+
+.premium-sidebar {
+    background: linear-gradient(180deg, var(--admin-sidebar-bg) 0%, var(--admin-sidebar-bg-end) 100%);
 }
